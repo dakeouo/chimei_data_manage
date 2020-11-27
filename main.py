@@ -1,4 +1,5 @@
 import sqlite3
+import cv2
 import csv
 from datetime import datetime
 import tkinter as tk
@@ -11,6 +12,8 @@ import math
 from functools import partial
 import numpy as np
 import matplotlib.pyplot as plt
+
+import ExpData_CSV_IMG_Process as EDCIP
 
 # SQL 語句命令
 # INSERT INTO table_name(field1,field2,...,fieldn) VALUES(val1,val2,...,valn)   
@@ -38,16 +41,18 @@ TK_BT_EXP_HAVE_PATH = ""
 
 tkWin = tk.Tk()
 tkWin.title(SYSTEM_NAME) #窗口名字
-tkWin.geometry('%dx%d+10+10' %(1024, 780)) #窗口大小(寬X高+X偏移量+Y偏移量)
+tkWin.geometry('%dx%d+10+10' %(1280, 780)) #窗口大小(寬X高+X偏移量+Y偏移量)
 tkWin.resizable(False, False) #禁止變更視窗大小
 
 WIN_CLOSE_LoadCSV = False
 WIN_CLOSE_FilterData = False
+WIN_CLOSE_LoadPath = False
 IS_SET_ExpData_File = False
 IS_SET_PathData_Path = False
 ExpData_CSV_Confirm = ""
 LoadCSV = ""
 FilterData = ""
+LoadPath = ""
 
 SQL_CONN = sqlite3.connect("./sqlite3_chimei_data.db") #建立資料庫連結
 CONSOLE_FLAG = 0 #新的一則訊息要寫在哪個位置
@@ -64,6 +69,7 @@ LOAD_EXP_MODEL_ID = -1
 LOAD_EXP_TIMEPOINT = ""
 LOAD_EXP_TIMEPOINT_ID = -1
 LOAD_EXP_HAVE_PATH = True
+LOAD_CSV_IMG_PATH_DIR = tk.StringVar()
 # LOAD_CSV_NAME = "./rowdata/20201015(06M).csv"
 LOAD_CSV_PATH = ""
 LOAD_CSV_NAME = tk.StringVar()
@@ -152,9 +158,9 @@ def SystemInit():
 	EXPTABLE_Data_Label = []
 	EXPTABLE_Filter_BT = []
 	EXPTABLE_Route_BT = []
-	EXPTABLE_SortData_BT = ["", "", "", "", "", "", "", "", ""]
+	EXPTABLE_SortData_BT = ["", "", "", "", "", "", "", "", "", "", "", "", ""]
 	for i in range(15):
-		EXPTABLE_Data_Label.append(["", "", "", "", "", "", ""])
+		EXPTABLE_Data_Label.append(["", "", "", "", "", "", "", "", "", "", "", ""])
 		EXPTABLE_Filter_BT.append("")
 		EXPTABLE_Route_BT.append("")
 
@@ -292,7 +298,7 @@ def InsertExpData2DB(exp_date, model, timepoint, csv_filepath, csv_filename, Pat
 	csv_filefullname = csv_filepath + csv_filename
 	csv_original_data = readCSV2List(csv_filefullname)
 
-	sql_query = "SELECT \"timepoints\" FROM \"exp_timepoint\" WHERE \"tp_no\" = \"%s\"" %(timepoint)
+	sql_query = "SELECT \"tp_show\" FROM \"exp_timepoint\" WHERE \"tp_no\" = \"%s\"" %(timepoint)
 	cursor = SQL_CONN.execute(sql_query)
 	newTimepoint = cursor.fetchone()
 
@@ -347,6 +353,11 @@ def LoadCSV_WindowsClosing():
 	LoadCSV.destroy()
 	WIN_CLOSE_LoadCSV = False
 
+def LoadPath_WindowsClosing():
+	global LoadPath, WIN_CLOSE_LoadPath
+	LoadPath.destroy()
+	WIN_CLOSE_LoadPath = False
+
 def FilterData_WindowsClosing():
 	global FilterData, WIN_CLOSE_FilterData
 	FilterData.destroy()
@@ -356,12 +367,15 @@ def Main_WindowsClosing():
 	global tkWin
 	global LoadCSV, WIN_CLOSE_LoadCSV
 	global FilterData, WIN_CLOSE_FilterData
+	global LoadPath, WIN_CLOSE_LoadPath
 
 	tkWin.destroy()
 	if WIN_CLOSE_LoadCSV:
 		LoadCSV.destroy()
 	if WIN_CLOSE_FilterData:
 		FilterData.destroy()
+	if WIN_CLOSE_LoadPath:
+		LoadPath.destroy()
 
 def changeHavePath():
 	global LOAD_EXP_HAVE_PATH, TK_BT_EXP_HAVE_PATH
@@ -372,6 +386,238 @@ def changeHavePath():
 	else:
 		TK_BT_EXP_HAVE_PATH.config(text="有路徑資料", bg="PaleGreen")
 		LOAD_EXP_HAVE_PATH = True
+
+def LoadPath_ExpData_CSV_IMG():
+	global SQL_CONN
+	global EDCIP, LoadPath, WIN_CLOSE_LoadPath
+	global LOAD_CSV_IMG_PATH_DIR
+
+	nowPath = LOAD_CSV_IMG_PATH_DIR.get()
+	TypeCSV_BT = "" 
+	TypeIMG_BT = ""
+	FileCount_Label = ""
+	FileModel_Label = ""
+	File_Cal = ""
+	TimepointCombo = ""
+
+	ExpData_Type = ""
+	ExpData_RatInfo_ID = []
+	ExpData_RatInfo_Group = []
+	ExpData_IMGCSV_FileName = []
+	ExpData_No_Label = ""
+	ExpData_Count_Label = ""
+	ExpData_Match_Label = ""
+	LoadPath_Confirm_BT = ""
+	Search_ExpData_BT = ""
+	Default_Info = [[-1, -1, -1], ""] #預設日期, 模型
+	RatInfo = [] #存放實驗大鼠路徑數據相關資料
+	covertTimepoint = {
+		'手術前':'pre', 
+		'手術後7天':'00M07D', '手術後14天':'00M14D', 
+		'手術後28天':'00M28D', '手術後3個月':'03M00D', 
+		'手術後6個月':'06M00D', '手術後9個月':'09M00D'
+	}
+	if not WIN_CLOSE_LoadPath:
+		def chooseFileType(fType):
+			global Default_Info, ExpData_Type
+
+			if fType == "CSV":
+				TypeCSV_BT.config(bg="PaleGreen")
+				TypeIMG_BT.config(bg="gray90")
+			elif fType == "IMG":
+				TypeIMG_BT.config(bg="PaleGreen")
+				TypeCSV_BT.config(bg="gray90")
+			ExpData_Type = fType
+			try:
+				Data_List, Rat_Info = EDCIP.listRatDataFile(fType, nowPath) #取得目前所有CSV的路徑
+				FileCount_Label.config(text=str(len(Rat_Info)))
+				# print(Rat_Info)
+				if len(Rat_Info) != 0:
+					TypeIMG_BT.config(state="disabled")
+					TypeCSV_BT.config(state="disabled")
+					Default_Info = [
+						[int(Rat_Info[0]["ExpDate"][0:4]), int(Rat_Info[0]["ExpDate"][4:6]), int(Rat_Info[0]["ExpDate"][6:8])],
+						Rat_Info[0]["Model"]
+					]
+					# print(Default_Info)
+					File_Cal.set_date(datetime.date(year=int(Default_Info[0][0]), month=int(Default_Info[0][1]), day=int(Default_Info[0][2])))
+					FileModel_Label.config(text=Default_Info[1])
+					for row in Rat_Info:
+						ExpData_RatInfo_ID.append(row['RatID'])
+						ExpData_RatInfo_Group.append(row['Groups'])
+						ExpData_IMGCSV_FileName.append(row['FileName'])
+				else:
+					WriteConsoleMsg("NOTICE", "指定資料夾內無%s附檔名的資料，請檢查資料夾路徑!" %(fType))
+			except:
+				WriteConsoleMsg("ERROR", "實驗路徑資料匯入的資料夾路徑有誤!")
+
+		def DB_Search():
+			global Default_Info
+
+			expDate = File_Cal.get()
+			sp_expdate = expDate.split("/")
+			newDate = [0, 0, 0]
+			if len(sp_expdate[0]) == 4:
+				newExpDate = "%04d/%02d/%02d" %(int(sp_expdate[0]), int(sp_expdate[1]), int(sp_expdate[2]))
+				newDate = [int(sp_expdate[0]), int(sp_expdate[1]), int(sp_expdate[2])]
+			elif len(sp_expdate[2]) == 4:
+				newExpDate = "%04d/%02d/%02d" %(int(sp_expdate[2]), int(sp_expdate[0]), int(sp_expdate[2]))
+				newDate = [int(sp_expdate[2]), int(sp_expdate[0]), int(sp_expdate[2])]
+			else:
+				newExpDate = "20%02d/%02d/%02d" %(int(sp_expdate[2]), int(sp_expdate[0]), int(sp_expdate[1]))
+				newDate = [int(sp_expdate[2])+2000, int(sp_expdate[0]), int(sp_expdate[1])]
+			Default_Info = [newDate, Default_Info[1]]
+			if TimepointCombo.current() != 0:
+				# print(Default_Info)
+				sql_query = "SELECT \"ExpNo\", \"Total\" FROM \"VIEW_Experiment_Overview_TBI\" WHERE \"ExpDate\" = \"%s\" AND \"Timepoint\" = \"%s\" AND \"Model\" = \"%s\"" %(
+					newExpDate, covertTimepoint[TimepointCombo.get()], Default_Info[1]
+				)
+				# print(sql_query)
+				try:
+					cursor = SQL_CONN.execute(sql_query)
+					result = cursor.fetchone()
+					if result != None:
+						ExpData_No_Label.config(text=result[0])
+						ExpData_Count_Label.config(text=result[1])
+						# print(FileCount_Label["text"])
+						if int(FileCount_Label["text"]) != int(result[1]):
+							ExpData_Match_Label.config(text="不符合", fg="salmon")
+						else:
+							ExpData_Match_Label.config(text="符合", fg="green4")
+						Search_ExpData_BT.config(state="disabled")
+						LoadPath_Confirm_BT.config(state="normal")
+					else:
+						WriteConsoleMsg("NOTICE", "查無數據資料!(實驗日期：%s, 時間點：%s)" %(newExpDate, TimepointCombo.get()))
+				except:
+					WriteConsoleMsg("ERROR", "於查詢資料時有問題!")
+			else:
+				WriteConsoleMsg("ERROR", "請選擇欲查詢的'時間點'!")
+
+		def LoadPathDataIntoDB():
+			global Default_Info, ExpData_Type
+			ExpNo = ExpData_No_Label['text']
+			ExpModel = Default_Info[1]
+			ExpDate = "%04d/%02d/%02d" %(Default_Info[0][0], Default_Info[0][1], Default_Info[0][2])
+			ExpData_ID = ExpData_RatInfo_ID
+			ExpData_Group = ExpData_RatInfo_Group
+			ExpDate_File = ExpData_IMGCSV_FileName
+			fTypeCovert = {"CSV":"csv", "IMG":"jpg"}
+			SuccessCount = 0
+
+			for i in range(len(ExpDate_File)):
+				if ExpData_Type == "CSV":
+					newFileContext = EDCIP.RouteInfo("%s/%s.%s" %(nowPath, ExpData_IMGCSV_FileName[i], fTypeCovert[ExpData_Type]))
+				elif ExpData_Type == "IMG":
+					newFileContext = cv2.imread("%s/%s.%s" %(nowPath, ExpData_IMGCSV_FileName[i], fTypeCovert[ExpData_Type]))
+					sql_query = "SELECT \"serial_data_id\" FROM \"exp_detail\" WHERE \"exp_date_id\" = \"%s\" AND \"rat_id\" = \"%s\"" %(ExpNo, ExpData_ID[i])
+					# print(sql_query)
+				try:
+					cursor = SQL_CONN.execute(sql_query)
+					result = cursor.fetchall()
+					# print(result)
+					if len(result) == 0:
+						WriteConsoleMsg("NOTICE", "查無 實驗編號%s 大鼠編號%s 數據資料!(%s)" %(ExpNo, ExpData_ID[i], ExpData_Type))
+					elif len(result) > 1:
+						print("有重複的ID：%s" %(ExpData_ID[i]))
+						sql_query = "SELECT \"serial_data_id\" FROM \"VIEW_TBI_ExpDetail_Data\" WHERE \"ExpDate\" = \"%s\" AND \"rat_id\" = \"%s\" AND \"groups\" = \"%s\"" %(ExpDate, ExpData_ID[i], ExpData_Group[i])
+						print(sql_query)
+						cursor = SQL_CONN.execute(sql_query)
+						result = cursor.fetchall()
+						if len(result) > 1:
+							WriteConsoleMsg("NOTICE", "實驗編號%s 大鼠編號%s 的數據資料量非唯一!(%s)" %(ExpNo, ExpData_ID[i], ExpData_Type))
+						elif len(result) == 1:
+							# print(result[0][0])
+							if ExpData_Type == "CSV":
+								EDCIP.saveNewCSVRoute(result[0][0], newFileContext)
+							elif ExpData_Type == "IMG":
+								EDCIP.saveNewIMGRoute(result[0][0], newFileContext)
+							SuccessCount = SuccessCount + 1
+						else:
+							WriteConsoleMsg("NOTICE", "於匯入實驗編號%s 之路徑數據資料時，無法區別重複的大鼠編號%d(%s)" %(ExpNo, ExpData_ID[i], ExpData_Type))
+					else:
+						if ExpData_Type == "CSV":
+							EDCIP.saveNewCSVRoute(result[0][0], newFileContext)
+						elif ExpData_Type == "IMG":
+							EDCIP.saveNewIMGRoute(result[0][0], newFileContext)
+						SuccessCount = SuccessCount + 1
+				except:
+					WriteConsoleMsg("ERROR", "於查詢實驗編號%s 大鼠編號%s 時有問題!(%s)" %(ExpNo, ExpData_ID[i], ExpData_Type))
+
+			if SuccessCount != 0:
+				if ExpData_Type == "CSV":
+					sql_query = "UPDATE \"exp_date\" SET \"CSV_Upload\" = 1 WHERE \"ExpNo\" = \"%s\"" %(ExpNo)
+				elif ExpData_Type == "IMG":
+					sql_query = "UPDATE \"exp_date\" SET \"IMG_Upload\" = 1 WHERE \"ExpNo\" = \"%s\"" %(ExpNo)
+				SQL_CONN.execute(sql_query)
+				SQL_CONN.commit()
+				WriteConsoleMsg("GOOD", "實驗編號%s 大鼠路徑檔案(%s)匯入：成功%d筆，失敗%d筆，共%d筆" %(ExpNo, ExpData_Type, SuccessCount, len(ExpDate_File)-SuccessCount, len(ExpDate_File)))
+				LoadPath_WindowsClosing()
+
+		WIN_CLOSE_LoadPath =True
+
+		LoadPath = tk.Tk()
+		LoadPath.title("匯入實驗路徑相關檔案") #窗口名字
+		LoadPath.geometry('%dx%d' %(300, 320)) #窗口大小(寬X高+X偏移量+Y偏移量)
+		LoadPath.resizable(False, False) #禁止變更視窗大小
+
+		L1Y = 10
+		tk.Label(LoadPath, text="檔案類型", font=('微軟正黑體', 12)).place(x=10,y=L1Y,anchor="nw")
+		TypeCSV_BT = tk.Button(LoadPath, text="CSV", font=('微軟正黑體', 10), command=partial(chooseFileType, "CSV"), bg="gray90")
+		TypeCSV_BT.place(x=90,y=L1Y-2,anchor="nw")
+		TypeIMG_BT = tk.Button(LoadPath, text="IMG", font=('微軟正黑體', 10), command=partial(chooseFileType, "IMG"), bg="gray90")
+		TypeIMG_BT.place(x=130,y=L1Y-2,anchor="nw")
+
+		L2Y = 40
+		tk.Label(LoadPath, text="檔案個數", font=('微軟正黑體', 12)).place(x=10,y=L2Y,anchor="nw")
+		FileCount_Label = tk.Label(LoadPath, text="0", font=('微軟正黑體', 12))
+		FileCount_Label.place(x=90,y=L2Y,anchor="nw")
+
+		L3Y = 70
+		tk.Label(LoadPath, text="實驗日期", font=('微軟正黑體', 12)).place(x=10,y=L3Y,anchor="nw")
+		File_Cal = DateEntry(LoadPath, width=10, background='gray', dateformat=4, font=('微軟正黑體', 10), foreground='white', borderwidth=2, state="readonly")
+		File_Cal.place(x=90,y=L3Y+2,anchor="nw")
+
+		L4Y = 100
+		tk.Label(LoadPath, text="疾病模型", font=('微軟正黑體', 12)).place(x=10,y=L4Y,anchor="nw")
+		FileModel_Label = tk.Label(LoadPath, text="無", font=('微軟正黑體', 12))
+		FileModel_Label.place(x=90,y=L4Y,anchor="nw")
+
+		L5Y = 130
+		TimepointList = ['請選擇...', '手術前', '手術後7天', '手術後14天', '手術後28天', '手術後3個月', '手術後6個月', '手術後9個月']
+		tk.Label(LoadPath, text="時間點", font=('微軟正黑體', 12)).place(x=10,y=L5Y,anchor="nw")
+		TimepointCombo = ttk.Combobox(LoadPath, width=12, values=TimepointList, font=('微軟正黑體', 10), state="readonly")
+		TimepointCombo.place(x=90,y=L5Y+2,anchor="nw")
+		TimepointCombo.current(0)
+
+		Search_ExpData_BT = tk.Button(LoadPath, text="查詢數據資料", font=('微軟正黑體', 10), command=DB_Search)
+		Search_ExpData_BT.place(x=150,y=160,anchor="n")
+
+		L6Y = 190
+		tk.Label(LoadPath, text="實驗編號", font=('微軟正黑體', 12)).place(x=10,y=L6Y,anchor="nw")
+		ExpData_No_Label = tk.Label(LoadPath, text="無", font=('微軟正黑體', 11))
+		ExpData_No_Label.place(x=90,y=L6Y,anchor="nw")
+
+		L7Y = 220
+		tk.Label(LoadPath, text="實驗個數", font=('微軟正黑體', 12)).place(x=10,y=L7Y,anchor="nw")
+		ExpData_Count_Label = tk.Label(LoadPath, text="無", font=('微軟正黑體', 11))
+		ExpData_Count_Label.place(x=90,y=L7Y,anchor="nw")
+
+		L8Y = 250
+		tk.Label(LoadPath, text="實驗個數是否符合", font=('微軟正黑體', 12)).place(x=10,y=L8Y,anchor="nw")
+		ExpData_Match_Label = tk.Label(LoadPath, text="尚未查詢", font=('微軟正黑體', 11, 'bold'), fg="gray70")
+		ExpData_Match_Label.place(x=150,y=L8Y,anchor="nw")
+
+		LoadPath_Confirm_BT = tk.Button(LoadPath, text="匯入路徑資訊", font=('微軟正黑體', 10), command=LoadPathDataIntoDB, state="disabled")
+		LoadPath_Confirm_BT.place(x=150,y=280,anchor="n")
+
+		# 第一步：取得資料夾下檔案個數及資訊
+		# 
+		# CSV_List, Rat_Info = EDCIP.listRatCSVFile("CSV", nowPath) #取得目前所有CSV的路徑
+		# print(CSV_List)
+		# print(Rat_Info)
+
+		LoadPath.protocol("WM_DELETE_WINDOW", LoadPath_WindowsClosing)
+		LoadPath.mainloop()
 
 def LoadCSV_ExperimentData():
 	global LoadCSV, WIN_CLOSE_LoadCSV, ExpData_CSV_Confirm
@@ -499,18 +745,22 @@ def LoadCSV_ExperimentData():
 		LoadCSV.mainloop()
 
 def chooseLoadPath_PathData(): #匯入實驗軌跡CSV路徑
-	global TK_BT_SetPathData, IS_SET_PathData_Path, LOAD_PATH_DIR
+	global TK_BT_SetPathData, IS_SET_PathData_Path, LOAD_CSV_IMG_PATH_DIR
 	global LOAD_EXP_DATE, LOAD_EXP_MODEL, LOAD_EXP_TIMEPOINT, LOAD_CSV_NAME, LOAD_CSV_PATH, LOAD_EXP_TIMEPOINT_ID, LOAD_EXP_MODEL_ID
 	
 	if not IS_SET_PathData_Path:
 		Path_FilePath = filedialog.askdirectory(initialdir = "./", title = "選擇路徑")
-		LOAD_PATH_DIR.set(Path_FilePath)
-		TK_BT_SetPathData.config(text="清除路徑", fg="red")
-		IS_SET_PathData_Path = True
+		if Path_FilePath != "":
+			LOAD_CSV_IMG_PATH_DIR.set(Path_FilePath)
+			TK_BT_SetPathData.config(text="清除路徑", fg="red")
+			IS_SET_PathData_Path = True
+			WriteConsoleMsg("INFO", "已選擇欲匯入的實驗路徑資料夾：%s" %(Path_FilePath))
+		else:
+			WriteConsoleMsg("NOTICE", "尚未選擇欲匯入的實驗路徑資料夾")
 	else:
 		TK_BT_SetPathData.config(text="選擇路徑", fg="black")
 		IS_SET_PathData_Path = False
-		LOAD_PATH_DIR.set("")
+		LOAD_CSV_IMG_PATH_DIR.set("")
 		LOAD_CSV_NAME.set("")
 		LOAD_CSV_PATH = ""
 		LOAD_EXP_DATE = ""
@@ -550,6 +800,12 @@ def LoopMain(): #GUI介面迴圈
 	global ExpDataTB_L_State, ExpDataTB_R_State
 	global EXPTABLE_SQL_Query, EXPTABLE_SQL_DATA_PAGE, EXPTABLE_SQL_DATA_MAXITEM
 	global WIN_CLOSE_FilterData, Filter_DateYearCombo, Filter_DateMonthCombo, Filter_DateDayCombo
+	global LOAD_CSV_IMG_PATH_DIR, TK_BT_LoadPathData
+
+	if LOAD_CSV_IMG_PATH_DIR.get() != "":
+		TK_BT_LoadPathData.config(state="normal")
+	else:
+		TK_BT_LoadPathData.config(state="disabled")
 
 	if LOAD_CSV_PATH != "" and LOAD_CSV_NAME.get() != "":
 		TK_BT_LoadExpCSV.config(state="normal")
@@ -563,7 +819,7 @@ def LoopMain(): #GUI介面迴圈
 	else:
 		TIMES_COUNT = TIMES_COUNT + 1
 	FilterData_DateDay = ["不指定",
-		"1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
+		"01", "02", "03", "04", "05", "06", "07", "08", "09", "10",
 		"11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
 		"21", "22", "23", "24", "25", "26", "27", "28"
 	]
@@ -612,10 +868,10 @@ def updateTBI_ExpDataTable(sql_query, data_page, max_item):
 	BT_Filter_Color = {-1:"gray80", 1:"PaleGreen", 0:"salmon"}
 
 	for i in range(EXPTABLE_SQL_DATA_MAXITEM):
-		for j in range(1,8):
+		for j in range(1,13):
 			EXPTABLE_Data_Label[i][j-1].config(text="")
 		EXPTABLE_Filter_BT[i].config(text=BT_Filter_Text[-1], bg=BT_Filter_Color[-1])
-		EXPTABLE_Route_BT[i].config(text=BT_Filter_Text[-1], bg=BT_Filter_Color[-1])
+		# EXPTABLE_Route_BT[i].config(text=BT_Filter_Text[-1], bg=BT_Filter_Color[-1])
 	
 	EXPTABLE_SQL_DATA_SUM, ExpDataTB_L_State, ExpDataTB_R_State, EXPTABLE_SQL_DATA_RESULT = SQLDataQuery2Table(sql_query, data_page, max_item, EXPTABLE_SORT_BY)
 	
@@ -626,14 +882,17 @@ def updateTBI_ExpDataTable(sql_query, data_page, max_item):
 	EXPTABLE_PAGE_STATE.set("第%d頁/共%d頁" %(data_page, math.ceil(EXPTABLE_SQL_DATA_SUM/EXPTABLE_SQL_DATA_MAXITEM)))
 
 	for i in range(len(EXPTABLE_SQL_DATA_RESULT)):
-		for j in range(1,len(EXPTABLE_SQL_DATA_RESULT[i])-2):
-			EXPTABLE_Data_Label[i][j-1].config(text=EXPTABLE_SQL_DATA_RESULT[i][j])
+		for j in range(1,len(EXPTABLE_SQL_DATA_RESULT[i])-1):
+			if EXPTABLE_SQL_DATA_RESULT[i][j] != None:
+				EXPTABLE_Data_Label[i][j-1].config(text=str(EXPTABLE_SQL_DATA_RESULT[i][j]))
+			else:
+				EXPTABLE_Data_Label[i][j-1].config(text="0")
 		EXPTABLE_Filter_BT[i].config(
-			text=BT_Filter_Text[EXPTABLE_SQL_DATA_RESULT[i][8]], 
-			bg=BT_Filter_Color[EXPTABLE_SQL_DATA_RESULT[i][8]], 
-			command=partial(ExpDataDetailSetFilter,EXPTABLE_SQL_DATA_RESULT[i][0], EXPTABLE_SQL_DATA_RESULT[i][8])
+			text=BT_Filter_Text[EXPTABLE_SQL_DATA_RESULT[i][13]], 
+			bg=BT_Filter_Color[EXPTABLE_SQL_DATA_RESULT[i][13]], 
+			command=partial(ExpDataDetailSetFilter,EXPTABLE_SQL_DATA_RESULT[i][0], EXPTABLE_SQL_DATA_RESULT[i][12])
 		)
-		EXPTABLE_Route_BT[i].config(text="進臂次數%02d" %(EXPTABLE_SQL_DATA_RESULT[i][9]), bg="gray70")
+		# EXPTABLE_Route_BT[i].config(text="次數%02d" %(EXPTABLE_SQL_DATA_RESULT[i][13]), bg="gray70")
 
 def updateTBI_ExpDateCal(c_month):
 	global CAL_DATE_NUM, CAL_ExpDate_Label
@@ -652,24 +911,34 @@ def updateTBI_ExpDateCal(c_month):
 	# 提取哪幾天有做實驗
 	MonthExpList = []
 	TP_Convert = {"pre": "Pre", "00M07D": "D07", "00M14D": "D14", "00M28D": "D28", "03M00D": "M03", "06M00D": "M06", "09M00D": "M09"}
-	TP_Color0 = {
+	TP_Color0 = { #綠色(無手寫資料)
 		"Pre": "OliveDrab", 
 		"D07": "OliveDrab1", "D14": "OliveDrab2", "D28": "OliveDrab3", 
 		"M03": "DarkOliveGreen1", "M06": "DarkOliveGreen2", "M09": "DarkOliveGreen3"
 	}
-	TP_Color1 = {
+	TP_Color1 = { #藍色(有手寫資料，但CSV/IMG還沒上傳)
 		"Pre": "SteelBlue", 
 		"D07": "SkyBlue1", "D14": "SkyBlue2", "D28": "SkyBlue3", 
 		"M03": "DeepSkyBlue1", "M06": "DeepSkyBlue2", "M09": "DeepSkyBlue3"
 	}
-	TP_Color2 = {
-		"Pre": "Orchid4", 
+	TP_Color2 = { #黃色(有手寫資料，但只有CSV上傳)
+		"Pre": "DarkGoldenrod", 
+		"D07": "gold", "D14": "gold2", "D28": "gold3", 
+		"M03": "goldenrod", "M06": "goldenrod2", "M09": "goldenrod3"
+	}
+	TP_Color3 = { #橘色(有手寫資料，但只有IMG上傳)
+		"Pre": "DarkOrange", 
+		"D07": "orange", "D14": "orange2", "D28": "orange3", 
+		"M03": "DarkOrange2", "M06": "DarkOrange3", "M09": "DarkOrange4"
+	}
+	TP_Color4 = { #紫色(有手寫資料，IMG/CSV都上傳)
+		"Pre": "DarkOrchid", 
 		"D07": "MediumOrchid1", "D14": "MediumOrchid2", "D28": "MediumOrchid3", 
 		"M03": "DarkOrchid1", "M06": "DarkOrchid2", "M09": "DarkOrchid3"
 	}
 	for i in range(31):
 		MonthExpList.append([])
-	sql_query = "SELECT \"ExpNo\",\"ExpDate\",\"Timepoint\",\"Total\",\"PathState\" FROM \"VIEW_Experiment_Overview_TBI\" WHERE \"ExpDate\" LIKE \"{0}/{1}/%\" ORDER BY \"ExpDate\", \"Timepoint\"".format(c_month[0],"%02d" %(c_month[1]))
+	sql_query = "SELECT \"ExpNo\",\"ExpDate\",\"Timepoint\",\"Total\",\"PathState\",\"CSV_Upload\",\"IMG_Upload\" FROM \"VIEW_Experiment_Overview_TBI\" WHERE \"ExpDate\" LIKE \"{0}/{1}/%\" ORDER BY \"ExpDate\", \"Timepoint\"".format(c_month[0],"%02d" %(c_month[1]))
 	cursor = SQL_CONN.execute(sql_query)
 	result = cursor.fetchall()
 	# print(result)
@@ -678,10 +947,14 @@ def updateTBI_ExpDateCal(c_month):
 		newColor = ""
 		if row[4] == 0:
 			newColor = TP_Color0[TP_Convert[row[2]]]
-		elif row[4] == 1:
+		elif row[4] == 1 and row[5] == 0:
 			newColor = TP_Color1[TP_Convert[row[2]]]
-		elif row[4] == 2:
+		elif row[4] == 1 and row[5] == 1 and row[6] == 0:
 			newColor = TP_Color2[TP_Convert[row[2]]]
+		elif row[4] == 1 and row[5] == 0 and row[6] == 1:
+			newColor = TP_Color3[TP_Convert[row[2]]]
+		elif row[4] == 1 and row[5] == 1 and row[6] == 1:
+			newColor = TP_Color4[TP_Convert[row[2]]]
 		MonthExpList[int(thisDate[2])-1].append([TP_Convert[row[2]], row[3], newColor])
 	# print(MonthExpList)
 
@@ -874,7 +1147,7 @@ def SQLDataQuery2Table(query, page_num, total_item, SortBy): #SQL命令 第幾�
 	resultTot = 0 #資料總數
 	resultData = [] #查詢結果
 
-	sortCol = ["ExpDate", "groups", "timepoints", "rat_id", "long_term", "short_term", "latency", "isFilter", "CountRoute"]
+	sortCol = ["ExpDate", "groups", "timepoints", "rat_id", "long_term", "short_term", "Speed(Central)", "Speed(Target)", "Speed(Normal)", "Speed(Total)", "distance", "latency", "isFilter"]
 	sortSide = {False:"ASC", True:"DESC"}
 	if SortBy[0] != -1:
 		query = query + " ORDER BY \"%s\" %s" %(sortCol[SortBy[0]], sortSide[SortBy[1]])
@@ -929,7 +1202,7 @@ def FilterData2DBData(FD_Date=None, FD_Group=None, FD_Timepoint=None, FD_LME=Non
 	ExpDetail_Data_ColList = ['ExpDate', 'groups', 'timepoints', 'long_term', 'short_term', 'latency']
 	if FD_Date != None:
 		isHaveFilter = True
-		if FD_Date[0] == "%" and FD_Date[1] == "%" and FD_Date[2] == "%":
+		if FD_Date[0] != "%" and FD_Date[1] != "%" and FD_Date[2] != "%":
 			EXPTABLE_SQL_Query = EXPTABLE_SQL_Query + " \"%s\" = \"%s/%s/%s\"" %('ExpDate', FD_Date[0], FD_Date[1], FD_Date[2])
 		else:
 			EXPTABLE_SQL_Query = EXPTABLE_SQL_Query + " \"%s\" LIKE \"%s/%s/%s\""  %('ExpDate', FD_Date[0], FD_Date[1], FD_Date[2])
@@ -1104,14 +1377,14 @@ def FilterData_ExperimentForTBI():
 		tk.Label(FilterData, text="●日期", font=('微軟正黑體', 11, 'bold')).place(x=10,y=L1Y,anchor="nw")
 		FilterData_DateYear = ['不限定']
 		for i in range(20,100):
-			FilterData_DateYear.append("%d" %(2000 + i))
+			FilterData_DateYear.append("%04d" %(2000 + i))
 		Filter_DateYearCombo = ttk.Combobox(FilterData, width=5, values=FilterData_DateYear, font=('微軟正黑體', 10), state="readonly")
 		Filter_DateYearCombo.place(x=70,y=L1Y+2,anchor="nw")
 		Filter_DateYearCombo.current(0)
 		tk.Label(FilterData, text="年", font=('微軟正黑體', 11)).place(x=133,y=L1Y,anchor="nw") #63
 		FilterData_DateMonth = ['不限定']
 		for i in range(12):
-			FilterData_DateMonth.append(i+1)
+			FilterData_DateMonth.append("%02d" %(i+1))
 		Filter_DateMonthCombo = ttk.Combobox(FilterData, width=5, values=FilterData_DateMonth, font=('微軟正黑體', 10), state="disabled")
 		Filter_DateMonthCombo.place(x=155,y=L1Y+2,anchor="nw")
 		Filter_DateMonthCombo.current(0)
@@ -1167,6 +1440,52 @@ def FilterData_ExperimentForTBI():
 		FilterData.protocol("WM_DELETE_WINDOW", FilterData_WindowsClosing)
 		FilterData.mainloop()
 
+def CalculateDistance():
+	global SQL_CONN, EDCIP
+	sql_query = "SELECT \"ExpNo\",\"ExpDate\",\"Timepoint\" FROM \"VIEW_Experiment_Overview_TBI\" WHERE \"Model\" = \"TBI\""
+	cursor = SQL_CONN.execute(sql_query)
+	result = cursor.fetchall()
+	ExpDate_List = []
+	for row in result:
+		sql_query = "SELECT \"tp_show\" FROM \"exp_timepoint\" WHERE \"tp_no\" = \"%s\"" %(row[2])
+		cursor = SQL_CONN.execute(sql_query)
+		tp = cursor.fetchone()
+		ExpDate_List.append({"ExpID":row[0], "ExpDate":row[1], "Timepoint":tp[0]})
+	# print(ExpDate_List)
+	for i in range(1, len(ExpDate_List)):
+		print("==========%d==========" %(i))
+		ExpNo = ExpDate_List[i]["ExpID"]
+		ExpDate = ExpDate_List[i]["ExpDate"]
+		spDate = ExpDate.split("/")
+		thisDate = [int(spDate[0]), int(spDate[1]), int(spDate[2])]
+		ExpTP = ExpDate_List[i]["Timepoint"]
+		WriteConsoleMsg("INFO", "開始進行實驗數據距離時間計算...(實驗編號：%s 實驗日期：%s 時間點：%s)" %(ExpNo, ExpDate, ExpTP))
+
+		sql_query = "SELECT \"serial_data_id\" FROM \"VIEW_TBI_ExpDetail_Data\" WHERE \"ExpDate\" = \"{0}\" AND \"timepoints\" = \"{1}\" AND \"serial_data_id\" LIKE \"{2}%\"".format(ExpDate, ExpTP, ExpNo)
+		cursor = SQL_CONN.execute(sql_query)
+		result = cursor.fetchall()
+		totalCount = len(result)
+		SuccessCount = 0
+		for row in result:
+			print(row[0])
+			DisTot, DisCTN, TimeCTN = EDCIP.RouteProcess(thisDate, row[0]) #總距離 分別距離 分別時間 [CTN = Central Target Normal]
+			sql_query = "UPDATE \"exp_detail\" SET \"DisC\" = \"%.2f\", \"DisT\" = \"%.2f\", \"DisN\" = \"%.2f\", \"TimeC\" = \"%.2f\", \"TimeT\" = \"%.2f\", \"TimeN\" = \"%.2f\" WHERE \"serial_data_id\" = \"%s\"" %(
+				DisCTN['Central'], DisCTN['Target'], DisCTN['Normal'],
+				TimeCTN['Central'], TimeCTN['Target'], TimeCTN['Normal'],
+				row[0]
+			)
+			try:
+				SQL_CONN.execute(sql_query)
+				SQL_CONN.commit()
+				SuccessCount = SuccessCount + 1
+			except:
+				WriteConsoleMsg("NOTICE", "更新 實驗數據編號%s 距離時間計算時發生問題!!" %(row[0]))
+
+		if SuccessCount != 0:
+			WriteConsoleMsg("GOOD", "更新實驗數據距離時間計算成功，共%d筆資料(實驗編號：%s 實驗日期：%s 時間點：%s)" %(SuccessCount, ExpNo, ExpDate, ExpTP))
+		else:
+			WriteConsoleMsg("NOTICE", "更新實驗數據距離時間計算失敗，成功%d/%d筆資料(實驗編號：%s 實驗日期：%s 時間點：%s)" %(SuccessCount, ExpNo, ExpDate, ExpTP))
+
 def WindowsView():
 	global tkWin, TK_BT_ShowQuantity, CONSOLE_COLOR
 	global LOAD_CSV_NAME, TK_BT_SetExpCSV, TK_BT_LoadExpCSV
@@ -1178,6 +1497,7 @@ def WindowsView():
 	global EXPTABLE_PAGE_L_BT, EXPTABLE_PAGE_R_BT, EXPTABLE_SEARCH_BT, EXPTABLE_PAGE_TOTAL, EXPTABLE_PAGE_STATE
 	global EXPTABLE_Data_Label, EXPTABLE_Filter_BT, EXPTABLE_Route_BT, ExpDataTB_L_State, ExpDataTB_R_State
 	global EXPTABLE_SortData_BT, EXPTABLE_SORT_BY
+	global LOAD_CSV_IMG_PATH_DIR
 
 	# 實驗數據匯入區
 	M1Y = 10
@@ -1190,15 +1510,17 @@ def WindowsView():
 	TK_BT_LoadExpCSV = tk.Button(tkWin, text='匯入資料', font=('微軟正黑體', 10), state="disabled", command=LoadCSV_ExperimentData)
 	TK_BT_LoadExpCSV.place(x=220,y=M1Y-2,anchor="nw")
 
+	tk.Button(tkWin, text='更新全部\n距離速率', width=7, font=('微軟正黑體', 10), command=CalculateDistance).place(x=295,y=M1Y,anchor="nw")
+
 	# 實驗數據匯入區
 	M2Y = 70
 	tk.Label(tkWin, text="匯入路徑軌跡數據(IMG/CSV)", font=('微軟正黑體', 11), bg="gray75").place(x=10,y=M2Y,anchor="nw")
 	tk.Label(tkWin, text="路徑名稱", font=('微軟正黑體', 12)).place(x=10,y=M2Y+27,anchor="nw")
-	TKE_PathData_Dir = tk.Entry(tkWin, textvariable=LOAD_PATH_DIR, font=('微軟正黑體', 10), width=33, state="disabled")
+	TKE_PathData_Dir = tk.Entry(tkWin, textvariable=LOAD_CSV_IMG_PATH_DIR, font=('微軟正黑體', 10), width=33, state="disabled")
 	TKE_PathData_Dir.place(x=85,y=M2Y+30,anchor="nw")
 	TK_BT_SetPathData = tk.Button(tkWin, text='選擇路徑', font=('微軟正黑體', 10), command=chooseLoadPath_PathData)
 	TK_BT_SetPathData.place(x=220,y=M2Y-2,anchor="nw")
-	TK_BT_LoadPathData = tk.Button(tkWin, text='匯入資料', font=('微軟正黑體', 10), state="disabled", command=LoadCSV_ExperimentData)
+	TK_BT_LoadPathData = tk.Button(tkWin, text='匯入資料', font=('微軟正黑體', 10), state="disabled", command=LoadPath_ExpData_CSV_IMG)
 	TK_BT_LoadPathData.place(x=290,y=M2Y-2,anchor="nw")
 
 	# 實驗總數顯示區
@@ -1302,7 +1624,7 @@ def WindowsView():
 	M5X = 10
 	M5Y = 690
 	testConsoleText = "[2020-11-20 10:50:23] 20201006(07D).csv 資料匯入(TBI Model - 00M07D)，成功 13 筆， 失敗 0 筆，共 13 筆資料"
-	TK_Console = tk.Frame(tkWin, width=1000, height=82, bg="black")
+	TK_Console = tk.Frame(tkWin, width=1250, height=82, bg="black")
 	TK_Console.place(x=M5X,y=M5Y,anchor="nw")
 	TK_Console_Line[0] = tk.Label(TK_Console, text="", font=('微軟正黑體', 10, 'bold'), bg="black", fg=CONSOLE_COLOR["NULL"])
 	TK_Console_Line[0].place(x=2,y=2,anchor="nw")
@@ -1318,7 +1640,7 @@ def WindowsView():
 	M6Y = 175
 	tk.Label(tkWin, text="刪除實驗數據", font=('微軟正黑體', 11), bg="gray75").place(x=M6X,y=M6Y,anchor="nw")
 	tk.Label(tkWin, text="實驗日期", font=('微軟正黑體', 11)).place(x=M6X+100,y=M6Y,anchor="nw")
-	DEL_Cal = DateEntry(tkWin, width=10, background='gray', dateformat=4, font=('微軟正黑體', 10, "bold"), foreground='white', borderwidth=2)
+	DEL_Cal = DateEntry(tkWin, width=10, background='gray', dateformat=4, font=('微軟正黑體', 10, "bold"), foreground='white', borderwidth=2, state="readonly")
 	DEL_Cal.place(x=M6X+170,y=M6Y+2,anchor="nw")
 	tk.Label(tkWin, text="時間點", font=('微軟正黑體', 11)).place(x=M6X+280,y=M6Y,anchor="nw")
 	DEL_Timepoint = ['請選擇...', '手術前', '手術後7天', '手術後14天', '手術後28天', '手術後3個月', '手術後6個月', '手術後9個月']
@@ -1334,9 +1656,9 @@ def WindowsView():
 	tk.Label(tkWin, text="實驗數據詳細資料(TBI)", font=('微軟正黑體', 11), bg="gray75").place(x=M7X,y=M7Y,anchor="nw")
 	M7TB_X = M7X
 	M7TB_Y = M7Y + 48
-	ExpDate_TBT = ['日期', '組別', '時間點', '編號', '*LME', '*SME', '總時間(s)', '採用', '進臂順序']
-	ExpDate_TBT_Size = [90, 90, 50, 100, 40, 45, 70, 50, 80]
-	ExpDate_TBT_LeftPos = [0,0,0,0,0,0,0,0,0]
+	ExpDate_TBT = ['日期', '組別', '時間點', '編號', '*LME', '*SME', '中央(cm/s)', '目標(cm/s)', '一般(cm/s)', 'TMS(cm/s)', '總距離(cm)', '總時間(s)', '採用']
+	ExpDate_TBT_Size = [90, 80, 50, 100, 40, 45, 70, 70, 70, 70, 70, 70, 50]
+	ExpDate_TBT_LeftPos = [0,0,0,0,0,0,0,0,0,0,0,0,0]
 
 	for i in range(len(ExpDate_TBT)):
 		if i > 0:
@@ -1353,7 +1675,7 @@ def WindowsView():
 		EXPTABLE_SortData_BT[i] = tk.Button(SortFram, text="", font=('微軟正黑體', 8), width=ExpDate_TBT_Size[i], bg="gray90", relief='flat', command=partial(setSortDataButton,i))
 		EXPTABLE_SortData_BT[i].place(x=int(ExpDate_TBT_Size[i]/2),y=-4,anchor="n")
 
-	testTableData = ['2020/11/15', 'rTBI+MSC', '07D', '20201008-10', 4, 23, 2183, False, None]
+	# testTableData = ['2020/11/15', 'rTBI+MSC', '07D', '20201008-10', 4, 23, 2183, False, None]
 
 	EXPTABLE_SQL_DATA_SUM, ExpDataTB_L_State, ExpDataTB_R_State, EXPTABLE_SQL_DATA_RESULT = SQLDataQuery2Table(EXPTABLE_SQL_Query, EXPTABLE_SQL_DATA_PAGE, EXPTABLE_SQL_DATA_MAXITEM, EXPTABLE_SORT_BY)
 
@@ -1379,19 +1701,24 @@ def WindowsView():
 		for i in range(len(ExpDate_TBT)):
 			TB_TBData = tk.Frame(tkWin, width=ExpDate_TBT_Size[i], height=23, bg="gray80")
 			TB_TBData.place(x=M7TB_X+ExpDate_TBT_LeftPos[i],y=TB_TBData_Y,anchor="nw")
-			if i < len(ExpDate_TBT) - 2:
+			if i < len(ExpDate_TBT) - 1:
 				EXPTABLE_Data_Label[j][i] = tk.Label(TB_TBData, text="", font=('微軟正黑體', 9), bg="gray80")
 				EXPTABLE_Data_Label[j][i].place(x=int(ExpDate_TBT_Size[i]/2),y=1,anchor="n")
-			elif i == len(ExpDate_TBT)-2:
-				EXPTABLE_Filter_BT[j] = tk.Button(TB_TBData, text="", font=('微軟正黑體', 9), width=ExpDate_TBT_Size[len(ExpDate_TBT)-2], bg="gray80", relief='flat', command=BT_None)
-				EXPTABLE_Filter_BT[j].place(x=int(ExpDate_TBT_Size[len(ExpDate_TBT)-2]/2),y=-2,anchor="n")
 			elif i == len(ExpDate_TBT)-1:
-				EXPTABLE_Route_BT[j] = tk.Button(TB_TBData, text="", font=('微軟正黑體', 9), width=ExpDate_TBT_Size[len(ExpDate_TBT)-1], bg="gray80", relief='flat', command=BT_None)
-				EXPTABLE_Route_BT[j].place(x=int(ExpDate_TBT_Size[len(ExpDate_TBT)-1]/2),y=-2,anchor="n")
+				EXPTABLE_Filter_BT[j] = tk.Button(TB_TBData, text="", font=('微軟正黑體', 9), width=ExpDate_TBT_Size[len(ExpDate_TBT)-1], bg="gray80", relief='flat', command=BT_None)
+				EXPTABLE_Filter_BT[j].place(x=int(ExpDate_TBT_Size[len(ExpDate_TBT)-1]/2),y=-2,anchor="n")
+			# elif i == len(ExpDate_TBT)-1:
+			# 	EXPTABLE_Route_BT[j] = tk.Button(TB_TBData, text="", font=('微軟正黑體', 9), width=ExpDate_TBT_Size[len(ExpDate_TBT)-1], bg="gray80", relief='flat', command=BT_None)
+			# 	EXPTABLE_Route_BT[j].place(x=int(ExpDate_TBT_Size[len(ExpDate_TBT)-1]/2),y=-2,anchor="n")
 	
-	TB_command = "註：*LME = Long-Term Memory Error (長期記憶錯誤) *SME = Short-Term Memory Error (短期記憶錯誤)"
+	TB_command = "註：*LME = Long-Term Memory Error (長期記憶錯誤) *SME = Short-Term Memory Error (短期記憶錯誤) *TMS = Total Mean Speed(總平均速率)"
 	tk.Label(tkWin, text=TB_command, font=('微軟正黑體', 8)).place(x=M7TB_X,y=M7TB_Y+402,anchor="nw")
 	
+	# 實驗數據展示區
+	M20X = 950
+	M20Y = 10
+	tk.Label(tkWin, text="數據計算測試區", font=('微軟正黑體', 11), bg="gray75").place(x=M20X,y=M20Y,anchor="nw")
+
 	tkWin.protocol("WM_DELETE_WINDOW", Main_WindowsClosing)
 	updateTBI_Quantity(TBI_QUANTITY_DATA_TYPE)
 	updateTBI_ExpDateCal(CAL_CURRENT_M)
