@@ -107,6 +107,24 @@ EXPTABLE_SortData_BT = []
 ExpDataTB_L_State = False
 ExpDataTB_R_State = False
 
+IMG_TP_Combo = ""
+IMG_TBIG_Combo = ""
+IMG_NOW_Combo = [0, 0]
+IMG_Page_Label = ""
+IMG_BT_OpenIMG = ""
+IMG_PAGE_CHANGE = False
+IMG_L_BT_Page = ""
+IMG_R_BT_Page = ""
+IMG_Page_STATE = 1
+IMG_Page_TOTAL = 1
+IMG_ExpID_List = []
+IMG_Query = "SELECT \"serial_data_id\" FROM \"VIEW_TBI_ExpDetail_Data\" WHERE 0"
+IMG_VIEW_IS_OPEN = False
+IMG_VIEW_COUNT = 8
+# IMG_FOLDER = "IMG_colorful"
+# IMG_FOLDER = "IMG_colorful_1"
+IMG_FOLDER = "IMG_1min"
+
 def BT_None():
 	pass
 
@@ -509,7 +527,7 @@ def LoadPath_ExpData_CSV_IMG():
 					newFileContext = EDCIP.RouteInfo("%s/%s.%s" %(nowPath, ExpData_IMGCSV_FileName[i], fTypeCovert[ExpData_Type]))
 				elif ExpData_Type == "IMG":
 					newFileContext = cv2.imread("%s/%s.%s" %(nowPath, ExpData_IMGCSV_FileName[i], fTypeCovert[ExpData_Type]))
-					sql_query = "SELECT \"serial_data_id\" FROM \"exp_detail\" WHERE \"exp_date_id\" = \"%s\" AND \"rat_id\" = \"%s\"" %(ExpNo, ExpData_ID[i])
+				sql_query = "SELECT \"serial_data_id\" FROM \"exp_detail\" WHERE \"exp_date_id\" = \"%s\" AND \"rat_id\" = \"%s\"" %(ExpNo, ExpData_ID[i])
 					# print(sql_query)
 				try:
 					cursor = SQL_CONN.execute(sql_query)
@@ -801,11 +819,30 @@ def LoopMain(): #GUI介面迴圈
 	global EXPTABLE_SQL_Query, EXPTABLE_SQL_DATA_PAGE, EXPTABLE_SQL_DATA_MAXITEM
 	global WIN_CLOSE_FilterData, Filter_DateYearCombo, Filter_DateMonthCombo, Filter_DateDayCombo
 	global LOAD_CSV_IMG_PATH_DIR, TK_BT_LoadPathData
+	global IMG_VIEW_IS_OPEN, IMG_TP_Combo, IMG_TBIG_Combo, IMG_BT_OpenIMG
+
+	if (cv2.getWindowProperty('Experimental Rat Path Trajectory',cv2.WND_PROP_VISIBLE) < 1) and (EDCIP.IMG_PATH_WINDOWS_IS_OPEN):
+		IMG_VIEW_IS_OPEN = False
+		EDCIP.IMG_PATH_WINDOWS_IS_OPEN = False
+
+	if IMG_TP_Combo.current() == 0 or IMG_TBIG_Combo.current() == 0:
+		IMG_VIEW_IS_OPEN = False
+		EDCIP.IMG_PATH_WINDOWS_IS_OPEN = False
 
 	if LOAD_CSV_IMG_PATH_DIR.get() != "":
 		TK_BT_LoadPathData.config(state="normal")
 	else:
 		TK_BT_LoadPathData.config(state="disabled")
+
+	if IMG_TP_Combo.current() != 0:
+		IMG_TBIG_Combo.config(state="readonly")
+	else:
+		IMG_TBIG_Combo.config(state="disabled")
+
+	if IMG_TBIG_Combo.current() != 0:
+		IMG_BT_OpenIMG.config(state="normal")
+	else:
+		IMG_BT_OpenIMG.config(state="disabled")
 
 	if LOAD_CSV_PATH != "" and LOAD_CSV_NAME.get() != "":
 		TK_BT_LoadExpCSV.config(state="normal")
@@ -815,6 +852,7 @@ def LoopMain(): #GUI介面迴圈
 		updateTBI_Quantity(TBI_QUANTITY_DATA_TYPE)
 		updateTBI_ExpDateCal(CAL_CURRENT_M)
 		updateTBI_ExpDataTable(EXPTABLE_SQL_Query, EXPTABLE_SQL_DATA_PAGE, EXPTABLE_SQL_DATA_MAXITEM)
+		updateTBI_ExpImgPath(IMG_VIEW_IS_OPEN)
 		TIMES_COUNT = 1
 	else:
 		TIMES_COUNT = TIMES_COUNT + 1
@@ -884,13 +922,16 @@ def updateTBI_ExpDataTable(sql_query, data_page, max_item):
 	for i in range(len(EXPTABLE_SQL_DATA_RESULT)):
 		for j in range(1,len(EXPTABLE_SQL_DATA_RESULT[i])-1):
 			if EXPTABLE_SQL_DATA_RESULT[i][j] != None:
-				EXPTABLE_Data_Label[i][j-1].config(text=str(EXPTABLE_SQL_DATA_RESULT[i][j]))
+				if j >= 7 and j <= 9:
+					EXPTABLE_Data_Label[i][j-1].config(text="{0}%".format(round(EXPTABLE_SQL_DATA_RESULT[i][j]*100)))
+				else:
+					EXPTABLE_Data_Label[i][j-1].config(text=str(EXPTABLE_SQL_DATA_RESULT[i][j]))
 			else:
-				EXPTABLE_Data_Label[i][j-1].config(text="0")
+				EXPTABLE_Data_Label[i][j-1].config(text="NULL")
 		EXPTABLE_Filter_BT[i].config(
 			text=BT_Filter_Text[EXPTABLE_SQL_DATA_RESULT[i][13]], 
 			bg=BT_Filter_Color[EXPTABLE_SQL_DATA_RESULT[i][13]], 
-			command=partial(ExpDataDetailSetFilter,EXPTABLE_SQL_DATA_RESULT[i][0], EXPTABLE_SQL_DATA_RESULT[i][12])
+			command=partial(ExpDataDetailSetFilter,EXPTABLE_SQL_DATA_RESULT[i][0], EXPTABLE_SQL_DATA_RESULT[i][13])
 		)
 		# EXPTABLE_Route_BT[i].config(text="次數%02d" %(EXPTABLE_SQL_DATA_RESULT[i][13]), bg="gray70")
 
@@ -932,7 +973,7 @@ def updateTBI_ExpDateCal(c_month):
 		"M03": "DarkOrange2", "M06": "DarkOrange3", "M09": "DarkOrange4"
 	}
 	TP_Color4 = { #紫色(有手寫資料，IMG/CSV都上傳)
-		"Pre": "DarkOrchid", 
+		"Pre": "MediumOrchid", 
 		"D07": "MediumOrchid1", "D14": "MediumOrchid2", "D28": "MediumOrchid3", 
 		"M03": "DarkOrchid1", "M06": "DarkOrchid2", "M09": "DarkOrchid3"
 	}
@@ -947,7 +988,7 @@ def updateTBI_ExpDateCal(c_month):
 		newColor = ""
 		if row[4] == 0:
 			newColor = TP_Color0[TP_Convert[row[2]]]
-		elif row[4] == 1 and row[5] == 0:
+		elif row[4] == 1 and row[5] == 0 and row[6] == 0:
 			newColor = TP_Color1[TP_Convert[row[2]]]
 		elif row[4] == 1 and row[5] == 1 and row[6] == 0:
 			newColor = TP_Color2[TP_Convert[row[2]]]
@@ -1030,6 +1071,82 @@ def updateTBI_Quantity(Q_type): # Group: TBI+MSC, TBI+NS, Sham+MSC, Sham+NS
 			TBI_QUANTITY_DATA[0][0].set(result[0][0])
 			TBI_QUANTITY_Group_TOTAL[i].set(gp_Sum)
 			TBI_QUANTITY_TOTAL_TOTAL.set(total_sum + result[0][0])
+
+def updateTBI_ExpImgPath(isOpenView):
+	global SQL_CONN
+	global IMG_TP_Combo, IMG_TBIG_Combo, IMG_BT_OpenIMG, IMG_L_BT_Page, IMG_R_BT_Page, IMG_Query, IMG_NOW_Combo
+	global IMG_Page_STATE, IMG_Page_TOTAL, IMG_ExpID_List, IMG_PAGE_CHANGE, IMG_Page_Label, IMG_FOLDER, IMG_VIEW_COUNT
+
+	covertTP = {'手術前':"Pre", '手術後7天':"D07", '手術後14天':"D14", '手術後28天':"D28", '手術後3個月':"M03", '手術後6個月':"M06", '手術後9個月':"M09"}
+	
+	if IMG_TP_Combo.current() != 0 and IMG_TBIG_Combo.current() != 0:
+		if (IMG_TP_Combo.current() != IMG_NOW_Combo[0]) or (IMG_TBIG_Combo.current() != IMG_NOW_Combo[1]):
+			IMG_Query = "SELECT \"serial_data_id\" FROM \"VIEW_TBI_ExpDetail_Data\" WHERE \"isFilter\" = 1 AND \"groups\" = \"%s\" AND \"timepoints\" = \"%s\" ORDER BY \"serial_data_id\" DESC" %(
+				IMG_TBIG_Combo.get(), covertTP[IMG_TP_Combo.get()]
+			)
+			# print(IMG_Query)
+			cursor = SQL_CONN.execute(IMG_Query)
+			result = cursor.fetchall()
+			IMG_Page_TOTAL = len(result)
+			IMG_NOW_Combo = [IMG_TP_Combo.current(), IMG_TBIG_Combo.current()]
+			if IMG_Page_TOTAL > IMG_VIEW_COUNT:
+				IMG_R_BT_Page.config(state="normal")
+			else:
+				IMG_R_BT_Page.config(state="disabled")
+			IMG_L_BT_Page.config(state="disabled")
+			IMG_Page_STATE = 1
+			IMG_PAGE_CHANGE = True
+	else:
+		IMG_Page_TOTAL = 0
+		IMG_NOW_Combo = [IMG_TP_Combo.current(), IMG_TBIG_Combo.current()]
+		IMG_Query = "SELECT \"serial_data_id\" FROM \"VIEW_TBI_ExpDetail_Data\" WHERE 0"
+
+	if IMG_PAGE_CHANGE:
+		newIMG_Query = ""
+		if IMG_Page_STATE*IMG_VIEW_COUNT <= IMG_Page_TOTAL:
+			newIMG_Query = IMG_Query + " LIMIT %d,%d" %(((IMG_Page_STATE-1)*IMG_VIEW_COUNT), IMG_VIEW_COUNT)
+		else:
+			newIMG_Query = IMG_Query + " LIMIT %d,%d" %(((IMG_Page_STATE-1)*IMG_VIEW_COUNT), IMG_Page_TOTAL - ((IMG_Page_STATE-1)*IMG_VIEW_COUNT))
+		cursor = SQL_CONN.execute(newIMG_Query)
+		result = cursor.fetchall()
+		IMG_ExpID_List = []
+		for row in result:
+			IMG_ExpID_List.append(row[0])
+		# print(IMG_ExpID_List)
+		if IMG_Page_STATE - 1 > 0:
+			IMG_L_BT_Page.config(state="normal")
+		else:
+			IMG_L_BT_Page.config(state="disabled")
+		if IMG_Page_STATE*IMG_VIEW_COUNT < IMG_Page_TOTAL:
+			IMG_R_BT_Page.config(state="normal")
+		else:
+			IMG_R_BT_Page.config(state="disabled")
+		if IMG_Page_TOTAL != 0:
+			IMG_Page_Label.config(text="第%d/%d頁" %(IMG_Page_STATE, math.ceil(IMG_Page_TOTAL/IMG_VIEW_COUNT)))
+		else:
+			IMG_Page_Label.config(text="無資料")
+		# print("IMG Total:" + str(IMG_Page_TOTAL))
+		IMG_PAGE_CHANGE = False
+	
+	if isOpenView:
+		PathInfo_List = [covertTP[IMG_TP_Combo.get()], IMG_TBIG_Combo.get(), IMG_Page_TOTAL, IMG_Page_STATE] #時間點 組別 總筆數 目前頁數
+		if IMG_VIEW_COUNT == 1:
+			EDCIP.showMultiImgPath(IMG_ExpID_List, PathInfo_List, IMG_FOLDER)
+		elif IMG_VIEW_COUNT == 8:
+			EDCIP.showImgPath(IMG_ExpID_List, PathInfo_List, IMG_FOLDER)
+		cv2.waitKey(1)
+	else:
+		IMG_BT_OpenIMG.config(text="開啟圖片", fg="black")
+		EDCIP.IMG_PATH_WINDOWS_IS_OPEN = False
+		cv2.destroyWindow("Experimental Rat Path Trajectory")
+
+def MoveUpDownImgPath(up_down):
+	global IMG_PAGE_CHANGE, IMG_Page_STATE, IMG_Page_TOTAL, IMG_VIEW_IS_OPEN
+
+	PageBT = {"Up":-1, "Down":1}
+	IMG_Page_STATE = IMG_Page_STATE + PageBT[up_down]
+	IMG_PAGE_CHANGE = True
+	updateTBI_ExpImgPath(IMG_VIEW_IS_OPEN)
 
 def chooseQuantityType():
 	global TK_BT_ShowQuantity, TBI_QUANTITY_DATA_TYPE
@@ -1256,7 +1373,7 @@ def FilterData2DBData(FD_Date=None, FD_Group=None, FD_Timepoint=None, FD_LME=Non
 	WriteConsoleMsg("NOTICE", "SQL 查詢命令：%s" %(EXPTABLE_SQL_Query))
 
 def FilterData_ExperimentForTBI():
-	global FilterData, WIN_CLOSE_FilterData
+	global FilterData, WIN_CLOSE_FilterData, EXPTABLE_SQL_DATA_PAGE
 	global Filter_DateYearCombo, Filter_DateMonthCombo, Filter_DateDayCombo
 	global Filter_GroupCombo, Filter_TimepointCombo, Filter_LatencyLSpinbox, Filter_LatencyRSpinbox
 	global Filter_LMELSpinbox, Filter_LMERSpinbox, Filter_SMELSpinbox, Filter_SMERSpinbox
@@ -1264,7 +1381,7 @@ def FilterData_ExperimentForTBI():
 	# now = datetime.datetime.now()
 	if not WIN_CLOSE_FilterData:
 		def TableData_Filter():
-			global Filter_DateYearCombo, Filter_DateMonthCombo, Filter_DateDayCombo
+			global Filter_DateYearCombo, Filter_DateMonthCombo, Filter_DateDayCombo, EXPTABLE_SQL_DATA_PAGE
 			global Filter_GroupCombo, Filter_TimepointCombo, Filter_LatencyLSpinbox, Filter_LatencyRSpinbox
 			global Filter_LMELSpinbox, Filter_LMERSpinbox, Filter_SMELSpinbox, Filter_SMERSpinbox
 
@@ -1364,6 +1481,7 @@ def FilterData_ExperimentForTBI():
 			FilterData_CSV_Confirm = tk.messagebox.askokcancel(title='確認篩選資訊', message=Filter_Text)
 			if FilterData_CSV_Confirm:
 				FilterData2DBData(FD_Date, FD_Group, FD_Timepoint, FD_LME, FD_SME, FD_Latency)
+				EXPTABLE_SQL_DATA_PAGE = 1
 
 		WIN_CLOSE_FilterData = True
 		FilterData = tk.Tk()
@@ -1440,9 +1558,19 @@ def FilterData_ExperimentForTBI():
 		FilterData.protocol("WM_DELETE_WINDOW", FilterData_WindowsClosing)
 		FilterData.mainloop()
 
+def setImgPathWindows():
+	global IMG_VIEW_IS_OPEN, IMG_BT_OpenIMG
+
+	if IMG_VIEW_IS_OPEN:
+		IMG_BT_OpenIMG.config(text="開啟圖片", fg="black")
+		IMG_VIEW_IS_OPEN = False
+	else:
+		IMG_BT_OpenIMG.config(text="關閉圖片", fg="red")
+		IMG_VIEW_IS_OPEN = True
+
 def CalculateDistance():
 	global SQL_CONN, EDCIP
-	sql_query = "SELECT \"ExpNo\",\"ExpDate\",\"Timepoint\" FROM \"VIEW_Experiment_Overview_TBI\" WHERE \"Model\" = \"TBI\""
+	sql_query = "SELECT \"ExpNo\",\"ExpDate\",\"Timepoint\", \"Total\" FROM \"VIEW_Experiment_Overview_TBI\" WHERE \"Model\" = \"TBI\""
 	cursor = SQL_CONN.execute(sql_query)
 	result = cursor.fetchall()
 	ExpDate_List = []
@@ -1452,7 +1580,7 @@ def CalculateDistance():
 		tp = cursor.fetchone()
 		ExpDate_List.append({"ExpID":row[0], "ExpDate":row[1], "Timepoint":tp[0]})
 	# print(ExpDate_List)
-	for i in range(1, len(ExpDate_List)):
+	for i in range(0, len(ExpDate_List)):
 		print("==========%d==========" %(i))
 		ExpNo = ExpDate_List[i]["ExpID"]
 		ExpDate = ExpDate_List[i]["ExpDate"]
@@ -1461,14 +1589,14 @@ def CalculateDistance():
 		ExpTP = ExpDate_List[i]["Timepoint"]
 		WriteConsoleMsg("INFO", "開始進行實驗數據距離時間計算...(實驗編號：%s 實驗日期：%s 時間點：%s)" %(ExpNo, ExpDate, ExpTP))
 
-		sql_query = "SELECT \"serial_data_id\" FROM \"VIEW_TBI_ExpDetail_Data\" WHERE \"ExpDate\" = \"{0}\" AND \"timepoints\" = \"{1}\" AND \"serial_data_id\" LIKE \"{2}%\"".format(ExpDate, ExpTP, ExpNo)
+		sql_query = "SELECT \"serial_data_id\", \"latency\" FROM \"VIEW_TBI_ExpDetail_Data\" WHERE \"ExpDate\" = \"{0}\" AND \"timepoints\" = \"{1}\" AND \"serial_data_id\" LIKE \"{2}%\"".format(ExpDate, ExpTP, ExpNo)
 		cursor = SQL_CONN.execute(sql_query)
 		result = cursor.fetchall()
 		totalCount = len(result)
 		SuccessCount = 0
 		for row in result:
 			print(row[0])
-			DisTot, DisCTN, TimeCTN = EDCIP.RouteProcess(thisDate, row[0]) #總距離 分別距離 分別時間 [CTN = Central Target Normal]
+			DisTot, DisCTN, TimeCTN = EDCIP.RouteProcess(thisDate, row[0], row[1]) #總距離 分別距離 分別時間 [CTN = Central Target Normal]
 			sql_query = "UPDATE \"exp_detail\" SET \"DisC\" = \"%.2f\", \"DisT\" = \"%.2f\", \"DisN\" = \"%.2f\", \"TimeC\" = \"%.2f\", \"TimeT\" = \"%.2f\", \"TimeN\" = \"%.2f\" WHERE \"serial_data_id\" = \"%s\"" %(
 				DisCTN['Central'], DisCTN['Target'], DisCTN['Normal'],
 				TimeCTN['Central'], TimeCTN['Target'], TimeCTN['Normal'],
@@ -1486,6 +1614,172 @@ def CalculateDistance():
 		else:
 			WriteConsoleMsg("NOTICE", "更新實驗數據距離時間計算失敗，成功%d/%d筆資料(實驗編號：%s 實驗日期：%s 時間點：%s)" %(SuccessCount, ExpNo, ExpDate, ExpTP))
 
+def Draw_Segment_Img():
+	global SQL_CONN, EDCIP
+	sql_query = "SELECT \"ExpNo\",\"ExpDate\",\"Timepoint\", \"Total\" FROM \"VIEW_Experiment_Overview_TBI\" WHERE \"Model\" = \"TBI\""
+	cursor = SQL_CONN.execute(sql_query)
+	result = cursor.fetchall()
+	ExpDate_List = []
+	for row in result:
+		sql_query = "SELECT \"tp_show\" FROM \"exp_timepoint\" WHERE \"tp_no\" = \"%s\"" %(row[2])
+		cursor = SQL_CONN.execute(sql_query)
+		tp = cursor.fetchone()
+		ExpDate_List.append({"ExpID":row[0], "ExpDate":row[1], "Timepoint":tp[0]})
+	# print(ExpDate_List)
+	for i in range(0, len(ExpDate_List)):
+		print("==========%d==========" %(i))
+		ExpNo = ExpDate_List[i]["ExpID"]
+		ExpDate = ExpDate_List[i]["ExpDate"]
+		spDate = ExpDate.split("/")
+		thisDate = [int(spDate[0]), int(spDate[1]), int(spDate[2])]
+		ExpTP = ExpDate_List[i]["Timepoint"]
+		WriteConsoleMsg("INFO", "開始進行實驗數據距離時間計算...(實驗編號：%s 實驗日期：%s 時間點：%s)" %(ExpNo, ExpDate, ExpTP))
+
+		sql_query = "SELECT \"serial_data_id\", \"latency\" FROM \"VIEW_TBI_ExpDetail_Data\" WHERE \"ExpDate\" = \"{0}\" AND \"timepoints\" = \"{1}\" AND \"serial_data_id\" LIKE \"{2}%\"".format(ExpDate, ExpTP, ExpNo)
+		cursor = SQL_CONN.execute(sql_query)
+		result = cursor.fetchall()
+		totalCount = len(result)
+		SuccessCount = 0
+		for row in result:
+			print(row[0])
+			try:
+				EDCIP.Route2_Segment_Img(thisDate, row[0], row[1]) #總距離 分別距離 分別時間 [CTN = Central Target Normal]
+				SuccessCount = SuccessCount + 1
+			except:
+				WriteConsoleMsg("NOTICE", "更新 實驗數據編號%s 距離時間計算時發生問題!!" %(row[0]))
+
+		if SuccessCount != 0:
+			WriteConsoleMsg("GOOD", "更新實驗數據距離時間計算成功，共%d筆資料(實驗編號：%s 實驗日期：%s 時間點：%s)" %(SuccessCount, ExpNo, ExpDate, ExpTP))
+		else:
+			WriteConsoleMsg("NOTICE", "更新實驗數據距離時間計算失敗，成功%d/%d筆資料(實驗編號：%s 實驗日期：%s 時間點：%s)" %(SuccessCount, totalCount, ExpNo, ExpDate, ExpTP))
+
+
+def Draw_Colorful_Img():
+	global SQL_CONN, EDCIP
+	sql_query = "SELECT \"ExpNo\",\"ExpDate\",\"Timepoint\", \"Total\" FROM \"VIEW_Experiment_Overview_TBI\" WHERE \"Model\" = \"TBI\""
+	cursor = SQL_CONN.execute(sql_query)
+	result = cursor.fetchall()
+	ExpDate_List = []
+	for row in result:
+		sql_query = "SELECT \"tp_show\" FROM \"exp_timepoint\" WHERE \"tp_no\" = \"%s\"" %(row[2])
+		cursor = SQL_CONN.execute(sql_query)
+		tp = cursor.fetchone()
+		ExpDate_List.append({"ExpID":row[0], "ExpDate":row[1], "Timepoint":tp[0]})
+	# print(ExpDate_List)
+	for i in range(0, len(ExpDate_List)):
+		print("==========%d==========" %(i))
+		ExpNo = ExpDate_List[i]["ExpID"]
+		ExpDate = ExpDate_List[i]["ExpDate"]
+		spDate = ExpDate.split("/")
+		thisDate = [int(spDate[0]), int(spDate[1]), int(spDate[2])]
+		ExpTP = ExpDate_List[i]["Timepoint"]
+		WriteConsoleMsg("INFO", "開始進行實驗數據距離時間計算...(實驗編號：%s 實驗日期：%s 時間點：%s)" %(ExpNo, ExpDate, ExpTP))
+
+		sql_query = "SELECT \"serial_data_id\", \"latency\" FROM \"VIEW_TBI_ExpDetail_Data\" WHERE \"ExpDate\" = \"{0}\" AND \"timepoints\" = \"{1}\" AND \"serial_data_id\" LIKE \"{2}%\"".format(ExpDate, ExpTP, ExpNo)
+		cursor = SQL_CONN.execute(sql_query)
+		result = cursor.fetchall()
+		totalCount = len(result)
+		SuccessCount = 0
+		for row in result:
+			print(row[0])
+			try:
+				EDCIP.Route2_Colorful_Img(thisDate, row[0], row[1]) #總距離 分別距離 分別時間 [CTN = Central Target Normal]
+				SuccessCount = SuccessCount + 1
+			except:
+				WriteConsoleMsg("NOTICE", "更新 實驗數據編號%s 距離時間計算時發生問題!!" %(row[0]))
+
+		if SuccessCount != 0:
+			WriteConsoleMsg("GOOD", "更新實驗數據距離時間計算成功，共%d筆資料(實驗編號：%s 實驗日期：%s 時間點：%s)" %(SuccessCount, ExpNo, ExpDate, ExpTP))
+		else:
+			WriteConsoleMsg("NOTICE", "更新實驗數據距離時間計算失敗，成功%d/%d筆資料(實驗編號：%s 實驗日期：%s 時間點：%s)" %(SuccessCount, totalCount, ExpNo, ExpDate, ExpTP))
+
+
+
+def Draw_1_Min_Img():
+	global SQL_CONN, EDCIP
+	sql_query = "SELECT \"ExpNo\",\"ExpDate\",\"Timepoint\", \"Total\" FROM \"VIEW_Experiment_Overview_TBI\" WHERE \"Model\" = \"TBI\""
+	cursor = SQL_CONN.execute(sql_query)
+	result = cursor.fetchall()
+	ExpDate_List = []
+	for row in result:
+		sql_query = "SELECT \"tp_show\" FROM \"exp_timepoint\" WHERE \"tp_no\" = \"%s\"" %(row[2])
+		cursor = SQL_CONN.execute(sql_query)
+		tp = cursor.fetchone()
+		ExpDate_List.append({"ExpID":row[0], "ExpDate":row[1], "Timepoint":tp[0]})
+	# print(ExpDate_List)
+	for i in range(0, len(ExpDate_List)):
+		print("==========%d==========" %(i))
+		ExpNo = ExpDate_List[i]["ExpID"]
+		ExpDate = ExpDate_List[i]["ExpDate"]
+		spDate = ExpDate.split("/")
+		thisDate = [int(spDate[0]), int(spDate[1]), int(spDate[2])]
+		ExpTP = ExpDate_List[i]["Timepoint"]
+		WriteConsoleMsg("INFO", "開始進行實驗數據距離時間計算...(實驗編號：%s 實驗日期：%s 時間點：%s)" %(ExpNo, ExpDate, ExpTP))
+
+		sql_query = "SELECT \"serial_data_id\", \"latency\" FROM \"VIEW_TBI_ExpDetail_Data\" WHERE \"ExpDate\" = \"{0}\" AND \"timepoints\" = \"{1}\" AND \"serial_data_id\" LIKE \"{2}%\"".format(ExpDate, ExpTP, ExpNo)
+		cursor = SQL_CONN.execute(sql_query)
+		result = cursor.fetchall()
+		totalCount = len(result)
+		SuccessCount = 0
+		for row in result:
+			print(row[0])
+			try:
+				EDCIP.Route2_1Min_Img(thisDate, row[0], row[1]) #總距離 分別距離 分別時間 [CTN = Central Target Normal]
+				SuccessCount = SuccessCount + 1
+			except:
+				WriteConsoleMsg("NOTICE", "更新 實驗數據編號%s 距離時間計算時發生問題!!" %(row[0]))
+
+		if SuccessCount != 0:
+			WriteConsoleMsg("GOOD", "更新實驗數據距離時間計算成功，共%d筆資料(實驗編號：%s 實驗日期：%s 時間點：%s)" %(SuccessCount, ExpNo, ExpDate, ExpTP))
+		else:
+			WriteConsoleMsg("NOTICE", "更新實驗數據距離時間計算失敗，成功%d/%d筆資料(實驗編號：%s 實驗日期：%s 時間點：%s)" %(SuccessCount, totalCount, ExpNo, ExpDate, ExpTP))
+
+def ChangeIMGViewSize():
+	global IMG_VIEW_COUNT, IMG_NOW_Combo, IMG_Page_STATE, IMG_FOLDER, IMG_PAGE_CHANGE
+
+	IMG_NOW_Combo = [-1, -1]
+	IMG_Page_STATE = 1
+	IMG_PAGE_CHANGE = True
+	if IMG_VIEW_COUNT == 1:
+		IMG_VIEW_COUNT = 8
+		IMG_FOLDER = "IMG_1min"
+	elif IMG_VIEW_COUNT == 8:
+		IMG_VIEW_COUNT = 1
+		IMG_FOLDER = "IMG_Segment"
+	WriteConsoleMsg("INFO", "更換圖片顯示模式為%d筆" %(IMG_VIEW_COUNT))
+
+def ExportImg():
+	global IMG_Query, IMG_TP_Combo, IMG_TBIG_Combo, IMG_FOLDER
+
+	covertTP = {'手術前':"Pre", '手術後7天':"D07", '手術後14天':"D14", '手術後28天':"D28", '手術後3個月':"M03", '手術後6個月':"M06", '手術後9個月':"M09"}
+	if IMG_TP_Combo.current() != 0 and  IMG_TBIG_Combo.current() != 0:
+		IMG_NOW_Combo = [covertTP[IMG_TP_Combo.get()], IMG_TBIG_Combo.get()]
+	else:
+		IMG_NOW_Combo = [None, None]
+	print(IMG_NOW_Combo)
+	Path_SavePath = filedialog.askdirectory(initialdir = "./", title = "選擇路徑")
+	if Path_SavePath != "":
+		WriteConsoleMsg("INFO", "已選擇欲匯出的資料夾：%s" %(Path_SavePath))
+		cursor = SQL_CONN.execute(IMG_Query)
+		result = cursor.fetchall()
+		if IMG_NOW_Combo[0] != None and IMG_NOW_Combo[1] != None:
+			if len(result) != 0:
+				SuccessCount = 0
+				for row in result:
+					try:
+						EDCIP.ExportImg2Folder("TBI", Path_SavePath, row[0], IMG_NOW_Combo, IMG_FOLDER)
+						SuccessCount = SuccessCount + 1
+					except:
+						WriteConsoleMsg("ERROR", "輸出編號%s 圖片時發生錯誤!" %(row[0]))
+				WriteConsoleMsg("GOOD", "圖片匯出成功(%s %s, 成功%d/%d)" %(IMG_NOW_Combo[0], IMG_NOW_Combo[1], SuccessCount, len(result)))
+			else:
+				WriteConsoleMsg("NOTICE", "無圖片資料能輸出!")
+		else:
+			WriteConsoleMsg("NOTICE", "輸出資訊不完整!")
+	else:
+		WriteConsoleMsg("NOTICE", "尚未選擇欲匯出的資料夾")
+
+
 def WindowsView():
 	global tkWin, TK_BT_ShowQuantity, CONSOLE_COLOR
 	global LOAD_CSV_NAME, TK_BT_SetExpCSV, TK_BT_LoadExpCSV
@@ -1498,6 +1792,7 @@ def WindowsView():
 	global EXPTABLE_Data_Label, EXPTABLE_Filter_BT, EXPTABLE_Route_BT, ExpDataTB_L_State, ExpDataTB_R_State
 	global EXPTABLE_SortData_BT, EXPTABLE_SORT_BY
 	global LOAD_CSV_IMG_PATH_DIR
+	global IMG_TP_Combo, IMG_TBIG_Combo, IMG_BT_OpenIMG, IMG_L_BT_Page, IMG_R_BT_Page, IMG_Page_Label
 
 	# 實驗數據匯入區
 	M1Y = 10
@@ -1656,7 +1951,7 @@ def WindowsView():
 	tk.Label(tkWin, text="實驗數據詳細資料(TBI)", font=('微軟正黑體', 11), bg="gray75").place(x=M7X,y=M7Y,anchor="nw")
 	M7TB_X = M7X
 	M7TB_Y = M7Y + 48
-	ExpDate_TBT = ['日期', '組別', '時間點', '編號', '*LME', '*SME', '中央(cm/s)', '目標(cm/s)', '一般(cm/s)', 'TMS(cm/s)', '總距離(cm)', '總時間(s)', '採用']
+	ExpDate_TBT = ['日期', '組別', '時間點', '編號', '*LME', '*SME', '中央(time)', '目標(time)', '一般(time)', 'TMS(cm/s)', '總距離(cm)', '總時間(s)', '採用']
 	ExpDate_TBT_Size = [90, 80, 50, 100, 40, 45, 70, 70, 70, 70, 70, 70, 50]
 	ExpDate_TBT_LeftPos = [0,0,0,0,0,0,0,0,0,0,0,0,0]
 
@@ -1714,10 +2009,34 @@ def WindowsView():
 	TB_command = "註：*LME = Long-Term Memory Error (長期記憶錯誤) *SME = Short-Term Memory Error (短期記憶錯誤) *TMS = Total Mean Speed(總平均速率)"
 	tk.Label(tkWin, text=TB_command, font=('微軟正黑體', 8)).place(x=M7TB_X,y=M7TB_Y+402,anchor="nw")
 	
-	# 實驗數據展示區
+	# 路徑結果圖顯示區
 	M20X = 950
 	M20Y = 10
-	tk.Label(tkWin, text="數據計算測試區", font=('微軟正黑體', 11), bg="gray75").place(x=M20X,y=M20Y,anchor="nw")
+	tk.Label(tkWin, text="路徑結果圖顯示區", font=('微軟正黑體', 11), bg="gray75").place(x=M20X,y=M20Y,anchor="nw")
+	IMG_TP = ['請選擇時間點', '手術前', '手術後7天', '手術後14天', '手術後28天', '手術後3個月', '手術後6個月', '手術後9個月']
+	IMG_TBI_G = ['請選擇組別', 'Sham', 'Sham+NS', 'Sham+MSC', 'rTBI+NS', 'rTBI+MSC']
+	IMG_TP_Combo = ttk.Combobox(tkWin, width=10, values=IMG_TP, font=('微軟正黑體', 10), state="readonly")
+	IMG_TP_Combo.place(x=M20X,y=M20Y+34,anchor="nw")
+	IMG_TP_Combo.current(0)
+	IMG_TBIG_Combo = ttk.Combobox(tkWin, width=10, values=IMG_TBI_G, font=('微軟正黑體', 10), state="readonly")
+	IMG_TBIG_Combo.place(x=M20X+110,y=M20Y+34,anchor="nw")
+	IMG_TBIG_Combo.current(0)
+	IMG_BT_OpenIMG = tk.Button(tkWin, text='開啟圖片', font=('微軟正黑體', 10), command=setImgPathWindows, state="disabled")
+	IMG_BT_OpenIMG.place(x=M20X+220,y=M20Y+29,anchor="nw")
+	
+	IMG_L_BT_Page = tk.Button(tkWin, text='◀', font=('微軟正黑體', 10), width=2, command=lambda: MoveUpDownImgPath('Up'), state="disabled")
+	IMG_L_BT_Page.place(x=M20X+130,y=M20Y-4,anchor="nw") #158
+	IMG_R_BT_Page = tk.Button(tkWin, text='▶', font=('微軟正黑體', 10), width=2, command=lambda: MoveUpDownImgPath('Down'), state="disabled")
+	IMG_R_BT_Page.place(x=M20X+243,y=M20Y-4,anchor="nw")
+	IMG_Page_Label = tk.Label(tkWin, text="無資料", font=('微軟正黑體', 10))
+	IMG_Page_Label.place(x=M20X+158+42,y=M20Y,anchor="n")
+
+	tk.Button(tkWin, text='更新全部\n一分色違', width=7, font=('微軟正黑體', 10), command=Draw_1_Min_Img).place(x=M20X,y=M20Y+60,anchor="nw")
+	tk.Button(tkWin, text='更新全部\n究極色違', width=7, font=('微軟正黑體', 10), command=Draw_Colorful_Img).place(x=M20X+80,y=M20Y+60,anchor="nw")
+	tk.Button(tkWin, text='更新全部\n究極進化', width=7, font=('微軟正黑體', 10), command=Draw_Segment_Img).place(x=M20X+160,y=M20Y+60,anchor="nw")
+	tk.Button(tkWin, text='更換圖片\n顯示模式', width=7, font=('微軟正黑體', 10), command=ChangeIMGViewSize).place(x=M20X+240,y=M20Y+60,anchor="nw")
+	tk.Button(tkWin, text='匯出目前\n所選圖片', width=7, font=('微軟正黑體', 10), command=ExportImg).place(x=M20X,y=M20Y+110,anchor="nw")
+	# tk.Button(tkWin, text='試色', width=7, font=('微軟正黑體', 10), command=EDCIP.testingColor).place(x=M20X+160,y=M20Y+60,anchor="nw")
 
 	tkWin.protocol("WM_DELETE_WINDOW", Main_WindowsClosing)
 	updateTBI_Quantity(TBI_QUANTITY_DATA_TYPE)
