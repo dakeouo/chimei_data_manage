@@ -338,6 +338,15 @@ def ExportImg2Folder(Model, Export_Folder, Img_PathID, ImgInfo, ImgFolder="IMG")
 	newExportFullName = '%s/%s_%s_%s_%s.jpg' %(Export_Folder, Model, ImgInfo[0], ImgInfo[1], Img_PathID)
 	cv2.imwrite(newExportFullName, newImg)
 
+def ExportCSV2Folder(Model, Export_Folder, CSV_PathID, CSVInfo, CSVFolder="CSV"):
+	global DestinationFolder
+	fileFullName = '%s/%s/%s.csv' %(DestinationFolder, CSVFolder, CSV_PathID)
+	newCSV = readCSV2List(fileFullName)
+	newExportFullName = '%s/%s_%s_%s_%s.csv' %(Export_Folder, Model, CSVInfo[0], CSVInfo[1], CSV_PathID)
+	writeData2CSV(newExportFullName, "w", newCSV[0])
+	for i in range(1,len(newCSV)):
+		writeData2CSV(newExportFullName, "a", newCSV[i])
+
 def showImgPath(Img_PathID, ImgInfo_List=None, ImgFolder="IMG"):
 	global DestinationFolder
 	global IMG_PATH_WINDOWS_IS_OPEN, CURRENT_MODEL_NAME

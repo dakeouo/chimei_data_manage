@@ -1783,6 +1783,37 @@ def ExportImg():
 	else:
 		WriteConsoleMsg("NOTICE", "尚未選擇欲匯出的資料夾")
 
+def ExportImg():
+	global IMG_Query, IMG_TP_Combo, IMG_TBIG_Combo
+
+	covertTP = {'手術前':"Pre", '手術後7天':"D07", '手術後14天':"D14", '手術後28天':"D28", '手術後3個月':"M03", '手術後6個月':"M06", '手術後9個月':"M09"}
+	if IMG_TP_Combo.current() != 0 and  IMG_TBIG_Combo.current() != 0:
+		CSV_NOW_Combo = [covertTP[IMG_TP_Combo.get()], IMG_TBIG_Combo.get()]
+	else:
+		CSV_NOW_Combo = [None, None]
+	print(IMG_NOW_Combo)
+	Path_SavePath = filedialog.askdirectory(initialdir = "./", title = "選擇路徑")
+	if Path_SavePath != "":
+		WriteConsoleMsg("INFO", "已選擇欲匯出的資料夾：%s" %(Path_SavePath))
+		cursor = SQL_CONN.execute(IMG_Query)
+		result = cursor.fetchall()
+		if CSV_NOW_Combo[0] != None and CSV_NOW_Combo[1] != None:
+			if len(result) != 0:
+				SuccessCount = 0
+				for row in result:
+					try:
+						EDCIP.ExportCSV2Folder("TBI", Path_SavePath, row[0], CSV_NOW_Combo, "CSV")
+						SuccessCount = SuccessCount + 1
+					except:
+						WriteConsoleMsg("ERROR", "輸出編號%s CSV時發生錯誤!" %(row[0]))
+				WriteConsoleMsg("GOOD", "CSV匯出成功(%s %s, 成功%d/%d)" %(CSV_NOW_Combo[0], CSV_NOW_Combo[1], SuccessCount, len(result)))
+			else:
+				WriteConsoleMsg("NOTICE", "無CSV資料能輸出!")
+		else:
+			WriteConsoleMsg("NOTICE", "輸出資訊不完整!")
+	else:
+		WriteConsoleMsg("NOTICE", "尚未選擇欲匯出的資料夾")
+
 
 def WindowsView():
 	global tkWin, TK_BT_ShowQuantity, CONSOLE_COLOR
@@ -2039,7 +2070,9 @@ def WindowsView():
 	tk.Button(tkWin, text='更新全部\n究極色違', width=7, font=('微軟正黑體', 10), command=Draw_Colorful_Img).place(x=M20X+80,y=M20Y+60,anchor="nw")
 	tk.Button(tkWin, text='更新全部\n究極進化', width=7, font=('微軟正黑體', 10), command=Draw_Segment_Img).place(x=M20X+160,y=M20Y+60,anchor="nw")
 	tk.Button(tkWin, text='更換圖片\n顯示模式', width=7, font=('微軟正黑體', 10), command=ChangeIMGViewSize).place(x=M20X+240,y=M20Y+60,anchor="nw")
+	
 	tk.Button(tkWin, text='匯出目前\n所選圖片', width=7, font=('微軟正黑體', 10), command=ExportImg).place(x=M20X,y=M20Y+110,anchor="nw")
+	tk.Button(tkWin, text='匯出目前\n所選CSV', width=7, font=('微軟正黑體', 10), command=ExportImg).place(x=M20X+80,y=M20Y+110,anchor="nw")
 	# tk.Button(tkWin, text='試色', width=7, font=('微軟正黑體', 10), command=EDCIP.testingColor).place(x=M20X+160,y=M20Y+60,anchor="nw")
 
 	tkWin.protocol("WM_DELETE_WINDOW", Main_WindowsClosing)
