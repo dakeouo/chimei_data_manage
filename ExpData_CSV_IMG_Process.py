@@ -9,6 +9,8 @@ import shutil
 SourceFolder = "" #來原資料夾
 DestinationFolder = './SQL_FILE' #目的資料夾
 
+CURRENT_MODEL_NAME = "TBI"
+
 ARM_UNIT = 8
 Pixel2CM_Convert = 170/480
 CurrentArm = 0 #當前進臂
@@ -338,7 +340,7 @@ def ExportImg2Folder(Model, Export_Folder, Img_PathID, ImgInfo, ImgFolder="IMG")
 
 def showImgPath(Img_PathID, ImgInfo_List=None, ImgFolder="IMG"):
 	global DestinationFolder
-	global IMG_PATH_WINDOWS_IS_OPEN
+	global IMG_PATH_WINDOWS_IS_OPEN, CURRENT_MODEL_NAME
 
 	IMG_PATH_WINDOWS_IS_OPEN = True
 	IMG_List = []
@@ -351,6 +353,7 @@ def showImgPath(Img_PathID, ImgInfo_List=None, ImgFolder="IMG"):
 	for i in range(8):
 		if i < len(Img_PathID):
 			fileFullName = '%s/%s/%s.jpg' %(DestinationFolder, ImgFolder, Img_PathID[i])
+			# print(fileFullName)
 			newImg1 = cv2.imread(fileFullName)
 			newImg1 = cv2.resize(newImg1,(imgWidth, imgWidth),interpolation=cv2.INTER_CUBIC)
 			newText = makeBlackImage((30,30,30))
@@ -374,7 +377,7 @@ def showImgPath(Img_PathID, ImgInfo_List=None, ImgFolder="IMG"):
 	CTY = 27
 	if ImgInfo_List != None:
 		cv2.putText(newImgTitle, "Model:", (10,CTY), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255,255,255), 1, cv2.LINE_AA)
-		cv2.putText(newImgTitle, "TBI", (85,CTY), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,255,255), 1, cv2.LINE_AA)
+		cv2.putText(newImgTitle, str(CURRENT_MODEL_NAME), (85,CTY), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,255,255), 1, cv2.LINE_AA)
 		cv2.putText(newImgTitle, "Timepoint:", (230,CTY), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255,255,255), 1, cv2.LINE_AA)
 		cv2.putText(newImgTitle, str(ImgInfo_List[0]), (350,CTY), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,255,255), 1, cv2.LINE_AA)
 		cv2.putText(newImgTitle, "Groups:", (470,CTY), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255,255,255), 1, cv2.LINE_AA)
@@ -544,7 +547,7 @@ def Route2_Segment_Img(ExpDate, ExpRatDataNo, ExpLatency):
 	# 繪製圖片
 	RouteCount = len(RoutePath)
 	segSec = 3*20
-	segTot = 50
+	segTot = 600
 	for i in range(0, segTot):
 		newImg = makeBlackImage()
 		newImg = cv2.resize(newImg,(480, 480),interpolation=cv2.INTER_CUBIC)

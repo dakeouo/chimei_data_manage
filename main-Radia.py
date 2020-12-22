@@ -25,7 +25,7 @@ import ExpData_CSV_IMG_Process as EDCIP
 
 # tkinter 視窗元件變數
 NOW_TIME = datetime.datetime.now()
-SYSTEM_NAME = "實驗大鼠八臂迷宮數據管理系統(TBI 專用)"
+SYSTEM_NAME = "實驗大鼠八臂迷宮數據管理系統(Radiation 專用)"
 TIMES_COUNT = 0
 TK_BT_SetExpCSV = ""
 TK_BT_LoadExpCSV = ""
@@ -39,7 +39,7 @@ DEL_Cal = ""
 TK_BT_DEL_ExpData = ""
 TK_BT_EXP_HAVE_PATH = ""
 
-EDCIP.CURRENT_MODEL_NAME = "TBI"
+EDCIP.CURRENT_MODEL_NAME = "Radiation"
 
 tkWin = tk.Tk()
 tkWin.title(SYSTEM_NAME) #窗口名字
@@ -77,14 +77,14 @@ LOAD_CSV_PATH = ""
 LOAD_CSV_NAME = tk.StringVar()
 LOAD_CSV_FULL_NAME = ""
 LOAD_PATH_DIR = tk.StringVar()
-TBI_QUANTITY_DATA_TYPE = "All"
-TBI_QUANTITY_DATA = []
-TBI_QUANTITY_Group_TOTAL = []
-TBI_QUANTITY_TP_TOTAL = []
-TBI_QUANTITY_TOTAL_TOTAL = []
+RADIA_QUANTITY_DATA_TYPE = "All"
+RADIA_QUANTITY_DATA = []
+RADIA_QUANTITY_Group_TOTAL = []
+RADIA_QUANTITY_TP_TOTAL = []
+RADIA_QUANTITY_TOTAL_TOTAL = []
 
 CAL_DATE_NUM = []
-CAL_CURRENT_M = [2020,7]
+CAL_CURRENT_M = [2020,10]
 CAL_ExpDate_List = []
 CAL_ExpDate_Color = []
 CAL_ExpDate_Label = []
@@ -94,8 +94,8 @@ TK_NOW_CAL_M.set("%d年%02d月份" %(CAL_CURRENT_M[0], CAL_CURRENT_M[1]))
 EXPTABLE_SQL_DATA_SUM = 0
 EXPTABLE_SQL_DATA_PAGE = 1
 EXPTABLE_SQL_DATA_RESULT = []
-EXPTABLE_SQL_DATA_MAXITEM = 15
-EXPTABLE_SQL_Query = "SELECT * FROM \"VIEW_TBI_ExpDetail_Data\" WHERE 1"
+EXPTABLE_SQL_DATA_MAXITEM = 12
+EXPTABLE_SQL_Query = "SELECT * FROM \"VIEW_RADIA_ExpDetail_Data\" WHERE 1"
 EXPTABLE_Data_Label = []
 EXPTABLE_Filter_BT = []
 EXPTABLE_Route_BT = []
@@ -120,12 +120,11 @@ IMG_R_BT_Page = ""
 IMG_Page_STATE = 1
 IMG_Page_TOTAL = 1
 IMG_ExpID_List = []
-IMG_Query = "SELECT \"serial_data_id\" FROM \"VIEW_TBI_ExpDetail_Data\" WHERE 0"
+IMG_Query = "SELECT \"serial_data_id\" FROM \"VIEW_RADIA_ExpDetail_Data\" WHERE 0"
 IMG_VIEW_IS_OPEN = False
 IMG_VIEW_COUNT = 8
 # IMG_FOLDER = "IMG_colorful"
 # IMG_FOLDER = "IMG_colorful_1"
-# IMG_FOLDER = "IMG_1min"
 IMG_FOLDER = "IMG"
 
 def BT_None():
@@ -142,22 +141,22 @@ def WriteConsoleMsg(level, msg):
 		MsgID = CONSOLE_MSG[MsgID][2]
 
 def SystemInit():
-	global TBI_QUANTITY_DATA, TBI_QUANTITY_Group_TOTAL, TBI_QUANTITY_TP_TOTAL, TBI_QUANTITY_TOTAL_TOTAL
+	global RADIA_QUANTITY_DATA, RADIA_QUANTITY_Group_TOTAL, RADIA_QUANTITY_TP_TOTAL, RADIA_QUANTITY_TOTAL_TOTAL
 	global CAL_DATE_NUM#, CAL_ExpDate_Label
 	global EXPTABLE_Data_Label, EXPTABLE_Filter_BT, EXPTABLE_Route_BT, EXPTABLE_SortData_BT
 	
-	TBI_QUANTITY_DATA = []
-	TBI_QUANTITY_Group_TOTAL = []
-	TBI_QUANTITY_TP_TOTAL = []
-	TBI_QUANTITY_TOTAL_TOTAL = tk.IntVar()
-	for i in range(4):
+	RADIA_QUANTITY_DATA = []
+	RADIA_QUANTITY_Group_TOTAL = []
+	RADIA_QUANTITY_TP_TOTAL = []
+	RADIA_QUANTITY_TOTAL_TOTAL = tk.IntVar()
+	for i in range(7):
 		data = []
-		TBI_QUANTITY_Group_TOTAL.append(tk.IntVar())
+		RADIA_QUANTITY_Group_TOTAL.append(tk.IntVar())
 		for j in range(7):
 			if i == 0:
-				TBI_QUANTITY_TP_TOTAL.append(tk.IntVar())
+				RADIA_QUANTITY_TP_TOTAL.append(tk.IntVar())
 			data.append(tk.IntVar())
-		TBI_QUANTITY_DATA.append(data)
+		RADIA_QUANTITY_DATA.append(data)
 
 	CAL_DATE_NUM = []
 	CAL_ExpDate_List = []
@@ -340,7 +339,6 @@ def InsertExpData2DB(exp_date, model, timepoint, csv_filepath, csv_filename, Pat
 	count = 0
 	for row in csv_original_data[1:]:
 		ratGroup, ratId, longTerm, shortTerm, Latency = row[0], row[1], int(row[3]), int(row[4]), row[6]
-		print(ratGroup, ratId, longTerm, shortTerm, Latency)
 		if timepoint == "pre" and model == "TBI":
 			ratGroup = "Sham"
 		elif timepoint != "pre" and (model == "TBI" and ratGroup == "Sham"):
@@ -354,7 +352,7 @@ def InsertExpData2DB(exp_date, model, timepoint, csv_filepath, csv_filename, Pat
 		elif (model == "TBI" and ratGroup == "TBI+MSC"):
 			ratGroup = "rTBI+MSC" 
 		Latency = string2Second(row[6])
-		print(ratGroup, ratId, longTerm, shortTerm, Latency)
+		# print(ratGroup, ratId, longTerm, shortTerm, Latency)
 		route = string2RouteList(row[5])
 		saveResult1 = SQL_SaveExpDetail(exp_date_no, ratGroup, ratId, shortTerm, longTerm, Latency, route)
 		if saveResult1[0] != 1 and saveResult1[1] != 0:
@@ -494,7 +492,7 @@ def LoadPath_ExpData_CSV_IMG():
 				sql_query = "SELECT \"ExpNo\", \"Total\" FROM \"VIEW_Experiment_Overview_%s\" WHERE \"ExpDate\" = \"%s\" AND \"Timepoint\" = \"%s\" AND \"Model\" = \"%s\"" %(
 					Default_Info[1], newExpDate, covertTimepoint[TimepointCombo.get()], Default_Info[1]
 				)
-				# print(sql_query)
+				print(sql_query)
 				try:
 					cursor = SQL_CONN.execute(sql_query)
 					result = cursor.fetchone()
@@ -541,7 +539,7 @@ def LoadPath_ExpData_CSV_IMG():
 						WriteConsoleMsg("NOTICE", "查無 實驗編號%s 大鼠編號%s 數據資料!(%s)" %(ExpNo, ExpData_ID[i], ExpData_Type))
 					elif len(result) > 1:
 						print("有重複的ID：%s" %(ExpData_ID[i]))
-						sql_query = "SELECT \"serial_data_id\" FROM \"VIEW_TBI_ExpDetail_Data\" WHERE \"ExpDate\" = \"%s\" AND \"rat_id\" = \"%s\" AND \"groups\" = \"%s\"" %(ExpDate, ExpData_ID[i], ExpData_Group[i])
+						sql_query = "SELECT \"serial_data_id\" FROM \"VIEW_RADIA_ExpDetail_Data\" WHERE \"ExpDate\" = \"%s\" AND \"rat_id\" = \"%s\" AND \"groups\" = \"%s\"" %(ExpDate, ExpData_ID[i], ExpData_Group[i])
 						print(sql_query)
 						cursor = SQL_CONN.execute(sql_query)
 						result = cursor.fetchall()
@@ -815,9 +813,9 @@ def chooseLoadFile_ExpData(): #匯入要寫入的實驗數據CSV路徑
 		IS_SET_ExpData_File = False
 
 def LoopMain(): #GUI介面迴圈
-	global NOW_TIME, tkWin, TBI_QUANTITY_DATA_TYPE, TIMES_COUNT
+	global NOW_TIME, tkWin, RADIA_QUANTITY_DATA_TYPE, TIMES_COUNT
 	global LOAD_CSV_NAME, LOAD_CSV_PATH, TK_BT_LoadExpCSV
-	global TBI_QUANTITY_DATA, TBI_QUANTITY_Group_TOTAL, TBI_QUANTITY_TP_TOTAL
+	global RADIA_QUANTITY_DATA, RADIA_QUANTITY_Group_TOTAL, RADIA_QUANTITY_TP_TOTAL
 	global CAL_CURRENT_M
 	global ExpDataTB_L_State, ExpDataTB_R_State
 	global EXPTABLE_SQL_Query, EXPTABLE_SQL_DATA_PAGE, EXPTABLE_SQL_DATA_MAXITEM
@@ -853,10 +851,10 @@ def LoopMain(): #GUI介面迴圈
 	else:
 		TK_BT_LoadExpCSV.config(state="disabled")
 	if TIMES_COUNT % 50 == 0:
-		updateTBI_Quantity(TBI_QUANTITY_DATA_TYPE)
-		updateTBI_ExpDateCal(CAL_CURRENT_M)
-		updateTBI_ExpDataTable(EXPTABLE_SQL_Query, EXPTABLE_SQL_DATA_PAGE, EXPTABLE_SQL_DATA_MAXITEM)
-		updateTBI_ExpImgPath(IMG_VIEW_IS_OPEN)
+		updateRADIA_QUANTITY(RADIA_QUANTITY_DATA_TYPE)
+		updateRADIA_ExpDateCal(CAL_CURRENT_M)
+		updateRADIA_ExpDataTable(EXPTABLE_SQL_Query, EXPTABLE_SQL_DATA_PAGE, EXPTABLE_SQL_DATA_MAXITEM)
+		updateRADIA_ExpImgPath(IMG_VIEW_IS_OPEN)
 		TIMES_COUNT = 1
 	else:
 		TIMES_COUNT = TIMES_COUNT + 1
@@ -897,11 +895,11 @@ def ExpDataDetailSetFilter(ExpDate_detail_ID, nowFilter):
 	try:
 		SQL_CONN.execute(sql_query)
 		SQL_CONN.commit()
-		updateTBI_ExpDataTable(EXPTABLE_SQL_Query, EXPTABLE_SQL_DATA_PAGE, EXPTABLE_SQL_DATA_MAXITEM)
+		updateRADIA_ExpDataTable(EXPTABLE_SQL_Query, EXPTABLE_SQL_DATA_PAGE, EXPTABLE_SQL_DATA_MAXITEM)
 	except:
 		WriteConsoleMsg("NOTICE", "變更 實驗編號%s 採用狀態時發生問題" %(ExpDate_detail_ID))
 
-def updateTBI_ExpDataTable(sql_query, data_page, max_item):
+def updateRADIA_ExpDataTable(sql_query, data_page, max_item):
 	global EXPTABLE_Data_Label, EXPTABLE_Filter_BT, EXPTABLE_Route_BT, EXPTABLE_SQL_DATA_MAXITEM
 	global EXPTABLE_PAGE_L_BT, EXPTABLE_PAGE_R_BT, EXPTABLE_SEARCH_BT, EXPTABLE_PAGE_TOTAL, EXPTABLE_PAGE_STATE
 	global EXPTABLE_SQL_DATA_SUM, ExpDataTB_L_State, ExpDataTB_R_State, EXPTABLE_SQL_DATA_RESULT, EXPTABLE_SORT_BY
@@ -939,7 +937,7 @@ def updateTBI_ExpDataTable(sql_query, data_page, max_item):
 		)
 		# EXPTABLE_Route_BT[i].config(text="次數%02d" %(EXPTABLE_SQL_DATA_RESULT[i][13]), bg="gray70")
 
-def updateTBI_ExpDateCal(c_month):
+def updateRADIA_ExpDateCal(c_month):
 	global CAL_DATE_NUM, CAL_ExpDate_Label
 
 	# 相關參數重置
@@ -983,7 +981,7 @@ def updateTBI_ExpDateCal(c_month):
 	}
 	for i in range(31):
 		MonthExpList.append([])
-	sql_query = "SELECT \"ExpNo\",\"ExpDate\",\"Timepoint\",\"Total\",\"PathState\",\"CSV_Upload\",\"IMG_Upload\" FROM \"VIEW_Experiment_Overview_TBI\" WHERE \"ExpDate\" LIKE \"{0}/{1}/%\" ORDER BY \"ExpDate\", \"Timepoint\"".format(c_month[0],"%02d" %(c_month[1]))
+	sql_query = "SELECT \"ExpNo\",\"ExpDate\",\"Timepoint\",\"Total\",\"PathState\",\"CSV_Upload\",\"IMG_Upload\" FROM \"VIEW_Experiment_Overview_RADIA\" WHERE \"ExpDate\" LIKE \"{0}/{1}/%\" ORDER BY \"ExpDate\", \"Timepoint\"".format(c_month[0],"%02d" %(c_month[1]))
 	cursor = SQL_CONN.execute(sql_query)
 	result = cursor.fetchall()
 	# print(result)
@@ -1036,47 +1034,73 @@ def updateTBI_ExpDateCal(c_month):
 		nowWeekDay = 0
 		nowCountDay = nowCountDay + 2
 
-def updateTBI_Quantity(Q_type): # Group: TBI+MSC, TBI+NS, Sham+MSC, Sham+NS
+def updateRADIA_QUANTITY(Q_type): # Group: TBI+MSC, TBI+NS, Sham+MSC, Sham+NS
 	global SQL_CONN
-	global TBI_QUANTITY_DATA, TBI_QUANTITY_Group_TOTAL, TBI_QUANTITY_TP_TOTAL, TBI_QUANTITY_TOTAL_TOTAL
+	global RADIA_QUANTITY_DATA, RADIA_QUANTITY_Group_TOTAL, RADIA_QUANTITY_TP_TOTAL, RADIA_QUANTITY_TOTAL_TOTAL
 
 	# Quantity_item = []
 	Quantity_item = [
 		[0, 0, 0, 0, 0, 0, 0],
 		[0, 0, 0, 0, 0, 0, 0],
 		[0, 0, 0, 0, 0, 0, 0],
+		[0, 0, 0, 0, 0, 0, 0],
+		[0, 0, 0, 0, 0, 0, 0],
+		[0, 0, 0, 0, 0, 0, 0],
 		[0, 0, 0, 0, 0, 0, 0]
 	]
+	RADIA_Group = ['radia_0gy', 'radia_2gy', 'radia_4gy', 'radia_10gy', 'radia_2gyi', 'radia_4gyi', 'radia_10gyi']
 	gp_Sum = 0
 	tp_Sum = [0,0,0,0,0,0,0]
 	total_sum = 0
 	if Q_type == "All":
-		sql_query = "SELECT \"Pre(Total)\",\"D7(Total)\",\"D14(Total)\",\"D28(Total)\",\"M3(Total)\",\"M6(Total)\",\"M9(Total)\" FROM \"VIEW_TBI_Model_Total_Quantity\" WHERE 1 ORDER BY \"groups\""
+		sql_query = "SELECT \"groups\",\"Pre(Total)\",\"D7(Total)\",\"D14(Total)\",\"D28(Total)\",\"M3(Total)\",\"M6(Total)\",\"M9(Total)\" FROM \"VIEW_RADIA_Model_Total_Quantity\" WHERE 1 ORDER BY \"groups\""
 	elif Q_type == "Filter":
-		sql_query = "SELECT \"Filter(Pre)\",\"Filter(D7)\",\"Filter(D14)\",\"Filter(D28)\",\"Filter(M3)\",\"Filter(M6)\",\"Filter(M9)\" FROM \"VIEW_TBI_Model_Total_Quantity\" WHERE 1 ORDER BY \"groups\""
+		sql_query = "SELECT \"groups\",\"Filter(Pre)\",\"Filter(D7)\",\"Filter(D14)\",\"Filter(D28)\",\"Filter(M3)\",\"Filter(M6)\",\"Filter(M9)\" FROM \"VIEW_RADIA_Model_Total_Quantity\" WHERE 1 ORDER BY \"groups\""
 	cursor = SQL_CONN.execute(sql_query)
 	result = cursor.fetchall()
 	if len(result) != 0:
-		for i in range(0,len(result)-1):
-			Quantity_item[i][0] = result[0][0]
-			for j in range(1,len(result[i])):
-				Quantity_item[i][j] = result[i+1][j]
-		for i in range(len(TBI_QUANTITY_DATA)):
+		for i in range(0,len(result)):
+			try:
+				idx = RADIA_Group.index(result[i][0])
+			except:
+				idx = -1
+			newResult = result[i][1:]
+			# print(newResult)
+			for j in range(0,len(newResult)):
+				if idx != -1:
+					Quantity_item[idx][j] = newResult[j]
+		RADIA_Pre_Count = 0
+		for i in range(len(RADIA_QUANTITY_DATA)):
 			gp_Sum = 0
-			for j in range(len(TBI_QUANTITY_DATA[i])):
-				TBI_QUANTITY_DATA[i][j].set(Quantity_item[3-i][j])
-				if j > 0:
-					total_sum = total_sum + TBI_QUANTITY_DATA[i][j].get()
-					gp_Sum = gp_Sum + TBI_QUANTITY_DATA[i][j].get()
-					tp_Sum[j] = tp_Sum[j] + TBI_QUANTITY_DATA[i][j].get()
-					if i == len(TBI_QUANTITY_DATA)-1:
-						TBI_QUANTITY_TP_TOTAL[j].set(tp_Sum[j])
-			TBI_QUANTITY_TP_TOTAL[0].set(result[0][0])
-			TBI_QUANTITY_DATA[0][0].set(result[0][0])
-			TBI_QUANTITY_Group_TOTAL[i].set(gp_Sum)
-			TBI_QUANTITY_TOTAL_TOTAL.set(total_sum + result[0][0])
+			RADIA_Pre_Count = RADIA_Pre_Count + Quantity_item[i][0]
+			for j in range(1,len(RADIA_QUANTITY_DATA[i])):
+				RADIA_QUANTITY_DATA[i][j].set(Quantity_item[i][j])
+				total_sum = total_sum + Quantity_item[i][j]
+				gp_Sum = gp_Sum + Quantity_item[i][j]
+				tp_Sum[j] = tp_Sum[j] + Quantity_item[i][j]
+				if i == len(RADIA_QUANTITY_DATA)-1:
+					RADIA_QUANTITY_TP_TOTAL[j].set(tp_Sum[j])
+			RADIA_QUANTITY_Group_TOTAL[i].set(gp_Sum)
+		RADIA_QUANTITY_TP_TOTAL[0].set(RADIA_Pre_Count)
+		RADIA_QUANTITY_DATA[0][0].set(RADIA_Pre_Count)
+		RADIA_QUANTITY_TOTAL_TOTAL.set(total_sum + RADIA_Pre_Count)
 
-def updateTBI_ExpImgPath(isOpenView):
+		# for i in range(len(RADIA_QUANTITY_DATA)):
+		# 	gp_Sum = 0
+		# 	for j in range(len(RADIA_QUANTITY_DATA[i])):
+		# 		RADIA_QUANTITY_DATA[i][j].set(Quantity_item[3-i][j])
+		# 		if j > 0:
+		# 			total_sum = total_sum + RADIA_QUANTITY_DATA[i][j].get()
+		# 			gp_Sum = gp_Sum + RADIA_QUANTITY_DATA[i][j].get()
+		# 			tp_Sum[j] = tp_Sum[j] + RADIA_QUANTITY_DATA[i][j].get()
+		# 			if i == len(RADIA_QUANTITY_DATA)-1:
+		# 				RADIA_QUANTITY_TP_TOTAL[j].set(tp_Sum[j])
+		# 	RADIA_QUANTITY_TP_TOTAL[0].set(result[0][0])
+		# 	RADIA_QUANTITY_DATA[0][0].set(result[0][0])
+		# 	RADIA_QUANTITY_Group_TOTAL[i].set(gp_Sum)
+		# 	RADIA_QUANTITY_TOTAL_TOTAL.set(total_sum + result[0][0])
+
+def updateRADIA_ExpImgPath(isOpenView):
 	global SQL_CONN
 	global IMG_TP_Combo, IMG_TBIG_Combo, IMG_BT_OpenIMG, IMG_L_BT_Page, IMG_R_BT_Page, IMG_Query, IMG_NOW_Combo
 	global IMG_Page_STATE, IMG_Page_TOTAL, IMG_ExpID_List, IMG_PAGE_CHANGE, IMG_Page_Label, IMG_FOLDER, IMG_VIEW_COUNT
@@ -1085,7 +1109,7 @@ def updateTBI_ExpImgPath(isOpenView):
 	
 	if IMG_TP_Combo.current() != 0 and IMG_TBIG_Combo.current() != 0:
 		if (IMG_TP_Combo.current() != IMG_NOW_Combo[0]) or (IMG_TBIG_Combo.current() != IMG_NOW_Combo[1]):
-			IMG_Query = "SELECT \"serial_data_id\" FROM \"VIEW_TBI_ExpDetail_Data\" WHERE \"isFilter\" = 1 AND \"groups\" = \"%s\" AND \"timepoints\" = \"%s\" ORDER BY \"serial_data_id\" DESC" %(
+			IMG_Query = "SELECT \"serial_data_id\" FROM \"VIEW_RADIA_ExpDetail_Data\" WHERE \"isFilter\" = 1 AND \"groups\" = \"%s\" AND \"timepoints\" = \"%s\" ORDER BY \"serial_data_id\" DESC" %(
 				IMG_TBIG_Combo.get(), covertTP[IMG_TP_Combo.get()]
 			)
 			# print(IMG_Query)
@@ -1103,7 +1127,7 @@ def updateTBI_ExpImgPath(isOpenView):
 	else:
 		IMG_Page_TOTAL = 0
 		IMG_NOW_Combo = [IMG_TP_Combo.current(), IMG_TBIG_Combo.current()]
-		IMG_Query = "SELECT \"serial_data_id\" FROM \"VIEW_TBI_ExpDetail_Data\" WHERE 0"
+		IMG_Query = "SELECT \"serial_data_id\" FROM \"VIEW_RADIA_ExpDetail_Data\" WHERE 0"
 
 	if IMG_PAGE_CHANGE:
 		newIMG_Query = ""
@@ -1150,16 +1174,16 @@ def MoveUpDownImgPath(up_down):
 	PageBT = {"Up":-1, "Down":1}
 	IMG_Page_STATE = IMG_Page_STATE + PageBT[up_down]
 	IMG_PAGE_CHANGE = True
-	updateTBI_ExpImgPath(IMG_VIEW_IS_OPEN)
+	updateRADIA_ExpImgPath(IMG_VIEW_IS_OPEN)
 
 def chooseQuantityType():
-	global TK_BT_ShowQuantity, TBI_QUANTITY_DATA_TYPE
-	if TBI_QUANTITY_DATA_TYPE == "All":
-		TBI_QUANTITY_DATA_TYPE = "Filter"
-		TK_BT_ShowQuantity.config(text=" TBI 各組篩選 ", bg="PaleGreen")
-	elif TBI_QUANTITY_DATA_TYPE == "Filter":
-		TBI_QUANTITY_DATA_TYPE = "All"
-		TK_BT_ShowQuantity.config(text=" TBI 各組總數 ", bg="gray75")
+	global TK_BT_ShowQuantity, RADIA_QUANTITY_DATA_TYPE
+	if RADIA_QUANTITY_DATA_TYPE == "All":
+		RADIA_QUANTITY_DATA_TYPE = "Filter"
+		TK_BT_ShowQuantity.config(text=" 輻射各組篩選 ", bg="PaleGreen")
+	elif RADIA_QUANTITY_DATA_TYPE == "Filter":
+		RADIA_QUANTITY_DATA_TYPE = "All"
+		TK_BT_ShowQuantity.config(text=" 輻射各組總數 ", bg="gray75")
 
 def MoveUpDownDataTable(up_down):
 	global ExpDataTB_L_State, ExpDataTB_R_State
@@ -1167,7 +1191,7 @@ def MoveUpDownDataTable(up_down):
 
 	PageBT = {"Up":-1, "Down":1}
 	EXPTABLE_SQL_DATA_PAGE = EXPTABLE_SQL_DATA_PAGE + PageBT[up_down]
-	updateTBI_ExpDataTable(EXPTABLE_SQL_Query, EXPTABLE_SQL_DATA_PAGE, EXPTABLE_SQL_DATA_MAXITEM)
+	updateRADIA_ExpDataTable(EXPTABLE_SQL_Query, EXPTABLE_SQL_DATA_PAGE, EXPTABLE_SQL_DATA_MAXITEM)
 
 def MoveUpDownCal(up_down):
 	global CAL_DATE_NUM, CAL_CURRENT_M, TK_NOW_CAL_M
@@ -1185,7 +1209,7 @@ def MoveUpDownCal(up_down):
 			CAL_CURRENT_M[1] = CAL_CURRENT_M[1] - 1
 	TK_NOW_CAL_M.set("%d年%02d月份" %(CAL_CURRENT_M[0], CAL_CURRENT_M[1]))
 	
-	updateTBI_ExpDateCal(CAL_CURRENT_M)
+	updateRADIA_ExpDateCal(CAL_CURRENT_M)
 
 def DeleteExpDate2DB(ExpDate_id):
 	global SQL_CONN
@@ -1228,7 +1252,7 @@ def DeleteExpData():
 	backTP = {"pre":'手術前', "00M07D":'手術後7天', "00M14D":'手術後14天', "00M28D":'手術後28天', "03M00D":'手術後3個月', "06M00D":'手術後6個月', "09M00D":'手術後9個月'}
 	nowTP = DEL_TimepointCombo.get()
 	if DEL_TimepointCombo.current() != 0:
-		sql_query = "SELECT \"ExpNo\", \"ExpDate\", \"Timepoint\", \"Total\" FROM \"VIEW_Experiment_Overview_TBI\" WHERE \"ExpDate\" = \"%s\" and \"Timepoint\" = \"%s\"" %(newExpDate, covertTP[nowTP])
+		sql_query = "SELECT \"ExpNo\", \"ExpDate\", \"Timepoint\", \"Total\" FROM \"VIEW_Experiment_Overview_RADIA\" WHERE \"ExpDate\" = \"%s\" and \"Timepoint\" = \"%s\"" %(newExpDate, covertTP[nowTP])
 		cursor = SQL_CONN.execute(sql_query)
 		result = cursor.fetchall()
 		if len(result) == 0:
@@ -1273,7 +1297,7 @@ def SQLDataQuery2Table(query, page_num, total_item, SortBy): #SQL命令 第幾�
 	if SortBy[0] != -1:
 		query = query + " ORDER BY \"%s\" %s" %(sortCol[SortBy[0]], sortSide[SortBy[1]])
 
-	# SQL_Query = "SELECT * FROM \"VIEW_TBI_ExpDetail_Data\" WHERE 1"
+	# SQL_Query = "SELECT * FROM \"VIEW_RADIA_ExpDetail_Data\" WHERE 1"
 	# 取得總共有多少筆資料
 	# print(query)
 	cursor = SQL_CONN.execute(query)
@@ -1319,7 +1343,7 @@ def setSortDataButton(sortBT_id):
 def FilterData2DBData(FD_Date=None, FD_Group=None, FD_Timepoint=None, FD_LME=None, FD_SME=None, FD_Latency=None):
 	global EXPTABLE_SQL_Query
 	isHaveFilter = False
-	EXPTABLE_SQL_Query = "SELECT * FROM \"VIEW_TBI_ExpDetail_Data\" WHERE"
+	EXPTABLE_SQL_Query = "SELECT * FROM \"VIEW_RADIA_ExpDetail_Data\" WHERE"
 	ExpDetail_Data_ColList = ['ExpDate', 'groups', 'timepoints', 'long_term', 'short_term', 'latency']
 	if FD_Date != None:
 		isHaveFilter = True
@@ -1518,7 +1542,7 @@ def FilterData_ExperimentForTBI():
 
 		L2Y = 65
 		tk.Label(FilterData, text="●組別", font=('微軟正黑體', 11, 'bold')).place(x=10,y=L2Y,anchor="nw")
-		FilterData_Group = ['不限定', 'Sham', 'Sham+NS', 'Sham+MSC', 'rTBI+NS', 'rTBI+MSC']
+		FilterData_Group = ['不限定', '0gy', '2gy', '4gy', '10gy', '2gyi', '4gyi', '10gyi']
 		Filter_GroupCombo = ttk.Combobox(FilterData, width=10, values=FilterData_Group, font=('微軟正黑體', 10), state="readonly")
 		Filter_GroupCombo.place(x=70,y=L2Y+2,anchor="nw")
 		Filter_GroupCombo.current(0)
@@ -1574,7 +1598,7 @@ def setImgPathWindows():
 
 def CalculateDistance():
 	global SQL_CONN, EDCIP
-	sql_query = "SELECT \"ExpNo\",\"ExpDate\",\"Timepoint\", \"Total\" FROM \"VIEW_Experiment_Overview_TBI\" WHERE \"Model\" = \"TBI\""
+	sql_query = "SELECT \"ExpNo\",\"ExpDate\",\"Timepoint\", \"Total\" FROM \"VIEW_Experiment_Overview_RADIA\" WHERE \"Model\" = \"RADIA\""
 	cursor = SQL_CONN.execute(sql_query)
 	result = cursor.fetchall()
 	ExpDate_List = []
@@ -1593,7 +1617,7 @@ def CalculateDistance():
 		ExpTP = ExpDate_List[i]["Timepoint"]
 		WriteConsoleMsg("INFO", "開始進行實驗數據距離時間計算...(實驗編號：%s 實驗日期：%s 時間點：%s)" %(ExpNo, ExpDate, ExpTP))
 
-		sql_query = "SELECT \"serial_data_id\", \"latency\" FROM \"VIEW_TBI_ExpDetail_Data\" WHERE \"ExpDate\" = \"{0}\" AND \"timepoints\" = \"{1}\" AND \"serial_data_id\" LIKE \"{2}%\"".format(ExpDate, ExpTP, ExpNo)
+		sql_query = "SELECT \"serial_data_id\", \"latency\" FROM \"VIEW_RADIA_ExpDetail_Data\" WHERE \"ExpDate\" = \"{0}\" AND \"timepoints\" = \"{1}\" AND \"serial_data_id\" LIKE \"{2}%\"".format(ExpDate, ExpTP, ExpNo)
 		cursor = SQL_CONN.execute(sql_query)
 		result = cursor.fetchall()
 		totalCount = len(result)
@@ -1620,7 +1644,7 @@ def CalculateDistance():
 
 def Draw_Segment_Img():
 	global SQL_CONN, EDCIP
-	sql_query = "SELECT \"ExpNo\",\"ExpDate\",\"Timepoint\", \"Total\" FROM \"VIEW_Experiment_Overview_TBI\" WHERE \"Model\" = \"TBI\""
+	sql_query = "SELECT \"ExpNo\",\"ExpDate\",\"Timepoint\", \"Total\" FROM \"VIEW_Experiment_Overview_RADIA\" WHERE \"Model\" = \"RADIA\""
 	cursor = SQL_CONN.execute(sql_query)
 	result = cursor.fetchall()
 	ExpDate_List = []
@@ -1639,7 +1663,7 @@ def Draw_Segment_Img():
 		ExpTP = ExpDate_List[i]["Timepoint"]
 		WriteConsoleMsg("INFO", "開始進行實驗數據距離時間計算...(實驗編號：%s 實驗日期：%s 時間點：%s)" %(ExpNo, ExpDate, ExpTP))
 
-		sql_query = "SELECT \"serial_data_id\", \"latency\" FROM \"VIEW_TBI_ExpDetail_Data\" WHERE \"ExpDate\" = \"{0}\" AND \"timepoints\" = \"{1}\" AND \"serial_data_id\" LIKE \"{2}%\"".format(ExpDate, ExpTP, ExpNo)
+		sql_query = "SELECT \"serial_data_id\", \"latency\" FROM \"VIEW_RADIA_ExpDetail_RADIA\" WHERE \"ExpDate\" = \"{0}\" AND \"timepoints\" = \"{1}\" AND \"serial_data_id\" LIKE \"{2}%\"".format(ExpDate, ExpTP, ExpNo)
 		cursor = SQL_CONN.execute(sql_query)
 		result = cursor.fetchall()
 		totalCount = len(result)
@@ -1660,7 +1684,7 @@ def Draw_Segment_Img():
 
 def Draw_Colorful_Img():
 	global SQL_CONN, EDCIP
-	sql_query = "SELECT \"ExpNo\",\"ExpDate\",\"Timepoint\", \"Total\" FROM \"VIEW_Experiment_Overview_TBI\" WHERE \"Model\" = \"TBI\""
+	sql_query = "SELECT \"ExpNo\",\"ExpDate\",\"Timepoint\", \"Total\" FROM \"VIEW_Experiment_Overview_RADIA\" WHERE \"Model\" = \"RADIA\""
 	cursor = SQL_CONN.execute(sql_query)
 	result = cursor.fetchall()
 	ExpDate_List = []
@@ -1679,7 +1703,7 @@ def Draw_Colorful_Img():
 		ExpTP = ExpDate_List[i]["Timepoint"]
 		WriteConsoleMsg("INFO", "開始進行實驗數據距離時間計算...(實驗編號：%s 實驗日期：%s 時間點：%s)" %(ExpNo, ExpDate, ExpTP))
 
-		sql_query = "SELECT \"serial_data_id\", \"latency\" FROM \"VIEW_TBI_ExpDetail_Data\" WHERE \"ExpDate\" = \"{0}\" AND \"timepoints\" = \"{1}\" AND \"serial_data_id\" LIKE \"{2}%\"".format(ExpDate, ExpTP, ExpNo)
+		sql_query = "SELECT \"serial_data_id\", \"latency\" FROM \"VIEW_RADIA_ExpDetail_Data\" WHERE \"ExpDate\" = \"{0}\" AND \"timepoints\" = \"{1}\" AND \"serial_data_id\" LIKE \"{2}%\"".format(ExpDate, ExpTP, ExpNo)
 		cursor = SQL_CONN.execute(sql_query)
 		result = cursor.fetchall()
 		totalCount = len(result)
@@ -1701,7 +1725,7 @@ def Draw_Colorful_Img():
 
 def Draw_1_Min_Img():
 	global SQL_CONN, EDCIP
-	sql_query = "SELECT \"ExpNo\",\"ExpDate\",\"Timepoint\", \"Total\" FROM \"VIEW_Experiment_Overview_TBI\" WHERE \"Model\" = \"TBI\""
+	sql_query = "SELECT \"ExpNo\",\"ExpDate\",\"Timepoint\", \"Total\" FROM \"VIEW_Experiment_Overview_RADIA\" WHERE \"Model\" = \"RADIA\""
 	cursor = SQL_CONN.execute(sql_query)
 	result = cursor.fetchall()
 	ExpDate_List = []
@@ -1720,7 +1744,7 @@ def Draw_1_Min_Img():
 		ExpTP = ExpDate_List[i]["Timepoint"]
 		WriteConsoleMsg("INFO", "開始進行實驗數據距離時間計算...(實驗編號：%s 實驗日期：%s 時間點：%s)" %(ExpNo, ExpDate, ExpTP))
 
-		sql_query = "SELECT \"serial_data_id\", \"latency\" FROM \"VIEW_TBI_ExpDetail_Data\" WHERE \"ExpDate\" = \"{0}\" AND \"timepoints\" = \"{1}\" AND \"serial_data_id\" LIKE \"{2}%\"".format(ExpDate, ExpTP, ExpNo)
+		sql_query = "SELECT \"serial_data_id\", \"latency\" FROM \"VIEW_RADIA_ExpDetail_Data\" WHERE \"ExpDate\" = \"{0}\" AND \"timepoints\" = \"{1}\" AND \"serial_data_id\" LIKE \"{2}%\"".format(ExpDate, ExpTP, ExpNo)
 		cursor = SQL_CONN.execute(sql_query)
 		result = cursor.fetchall()
 		totalCount = len(result)
@@ -1788,7 +1812,7 @@ def WindowsView():
 	global tkWin, TK_BT_ShowQuantity, CONSOLE_COLOR
 	global LOAD_CSV_NAME, TK_BT_SetExpCSV, TK_BT_LoadExpCSV
 	global LOAD_PATH_DIR, TK_BT_SetPathData, TK_BT_LoadPathData
-	global TBI_QUANTITY_DATA, TBI_QUANTITY_Group_TOTAL, TBI_QUANTITY_TP_TOTAL, TBI_QUANTITY_TOTAL_TOTAL
+	global RADIA_QUANTITY_DATA, RADIA_QUANTITY_Group_TOTAL, RADIA_QUANTITY_TP_TOTAL, RADIA_QUANTITY_TOTAL_TOTAL
 	global CAL_DATE_NUM, TK_NOW_CAL_M, TK_SHOW_CAL_Month, CAL_ExpDate_Label
 	global DEL_Cal, DEL_TimepointCombo
 	global EXPTABLE_SQL_DATA_SUM, EXPTABLE_SQL_DATA_PAGE, EXPTABLE_SQL_DATA_RESULT, EXPTABLE_SQL_DATA_MAXITEM
@@ -1825,7 +1849,7 @@ def WindowsView():
 	# 實驗總數顯示區
 	M3X = 370
 	M3Y = 12
-	TK_BT_ShowQuantity = tk.Button(tkWin, text='TBI 各組總數', font=('微軟正黑體', 10), bg="gray75", width=10, relief="flat", command=chooseQuantityType)
+	TK_BT_ShowQuantity = tk.Button(tkWin, text='輻射各組總數', font=('微軟正黑體', 10), bg="gray75", width=10, relief="flat", command=chooseQuantityType)
 	TK_BT_ShowQuantity.place(x=M3X+1,y=M3Y-2,anchor="nw")
 	
 	M3X_1 = M3X+95
@@ -1843,7 +1867,7 @@ def WindowsView():
 
 	M3X_2 = M3X
 	M3Y_2 = M3Y+30
-	SHOW_TBI_Group_List = ['Sham+NS', 'Sham+MSC', 'rTBI+NS', 'rTBI+MSC']
+	SHOW_TBI_Group_List = ['0gy', '2gy', '4gy', '10gy', '2gyi', '4gyi', '10gyi']
 	for i in range(len(SHOW_TBI_Group_List)):
 		newTBI_Group_Frame = tk.Frame(tkWin, width=90, height=24, bg="SkyBlue1")
 		newTBI_Group_Frame.place(x=M3X_2, y=M3Y_2 + 26*i, anchor="nw")
@@ -1851,24 +1875,24 @@ def WindowsView():
 		for j in range(1,len(SHOW_TP_List)):
 			newTBI_Data_Frame = tk.Frame(tkWin, width=54, height=24, bg="gray85")
 			newTBI_Data_Frame.place(x=M3X_2 + 95 + 56*j, y=M3Y_2 + 26*i, anchor="nw")
-			tk.Label(newTBI_Data_Frame, textvariable=TBI_QUANTITY_DATA[i][j], font=('微軟正黑體', 10), bg="gray85").place(x=27,y=1,anchor="n")
-	newTBI_Data_Frame = tk.Frame(tkWin, width=54, height=26*4 - 2, bg="gray85")
+			tk.Label(newTBI_Data_Frame, textvariable=RADIA_QUANTITY_DATA[i][j], font=('微軟正黑體', 10), bg="gray85").place(x=27,y=1,anchor="n")
+	newTBI_Data_Frame = tk.Frame(tkWin, width=54, height=26*7 - 2, bg="gray85")
 	newTBI_Data_Frame.place(x=M3X_2 + 95, y=M3Y_2, anchor="nw")
-	tk.Label(newTBI_Data_Frame, textvariable=TBI_QUANTITY_DATA[0][0], font=('微軟正黑體', 10), bg="gray85").place(x=27,y=(26*4-2)/2-10,anchor="n")
+	tk.Label(newTBI_Data_Frame, textvariable=RADIA_QUANTITY_DATA[0][0], font=('微軟正黑體', 10), bg="gray85").place(x=27,y=(26*7-2)/2-10,anchor="n")
 
 	M3X_3 = M3X+95
-	M3Y_3 = M3Y+135
-	for i in range(len(TBI_QUANTITY_TP_TOTAL)):
+	M3Y_3 = M3Y+213
+	for i in range(len(RADIA_QUANTITY_TP_TOTAL)):
 		newTBI_Total_Frame = tk.Frame(tkWin, width=54, height=24, bg="SkyBlue2")
 		newTBI_Total_Frame.place(x=M3X_3 + 56*i, y=M3Y_3, anchor="nw")
-		tk.Label(newTBI_Total_Frame, textvariable=TBI_QUANTITY_TP_TOTAL[i], font=('微軟正黑體', 10, 'bold'), bg="SkyBlue2").place(x=27,y=0,anchor="n")
+		tk.Label(newTBI_Total_Frame, textvariable=RADIA_QUANTITY_TP_TOTAL[i], font=('微軟正黑體', 10, 'bold'), bg="SkyBlue2").place(x=27,y=0,anchor="n")
 	
 	M3X_4 = M3X+487
 	M3Y_4 = M3Y+30
-	for i in range(len(TBI_QUANTITY_Group_TOTAL)):
+	for i in range(len(RADIA_QUANTITY_Group_TOTAL)):
 		newTBI_Group_Total_Frame = tk.Frame(tkWin, width=82, height=24, bg="DeepSkyBlue1")
 		newTBI_Group_Total_Frame.place(x=M3X_4, y=M3Y_4 + 26*i, anchor="nw")
-		tk.Label(newTBI_Group_Total_Frame, textvariable=TBI_QUANTITY_Group_TOTAL[i], font=('微軟正黑體', 10, 'bold'), bg="DeepSkyBlue1").place(x=41, y=1, anchor="n")
+		tk.Label(newTBI_Group_Total_Frame, textvariable=RADIA_QUANTITY_Group_TOTAL[i], font=('微軟正黑體', 10, 'bold'), bg="DeepSkyBlue1").place(x=41, y=1, anchor="n")
 
 	M3X_5 = M3X+487
 	M3Y_5 = M3Y-2
@@ -1877,16 +1901,16 @@ def WindowsView():
 	tk.Label(newTBI_Group_Total_Label, text="Total(術後)", font=('微軟正黑體', 10, 'bold'), bg="DeepSkyBlue1").place(x=41, y=3, anchor="n")
 	
 	M3X_6 = M3X
-	M3Y_6 = M3Y+135
+	M3Y_6 = M3Y+213
 	newTBI_TP_Total_Label = tk.Frame(tkWin, width=90, height=24, bg="SkyBlue2")
 	newTBI_TP_Total_Label.place(x=M3X_6,y=M3Y_6,anchor="nw")
 	tk.Label(newTBI_TP_Total_Label, text="Total(整體)", font=('微軟正黑體', 10, "bold"), bg="SkyBlue2").place(x=45,y=1,anchor="n")
 
 	M3X_7 = M3X+487
-	M3Y_7 = M3Y+135
+	M3Y_7 = M3Y+213
 	newTBI_TP_Total_Total = tk.Frame(tkWin, width=82, height=24, bg="SkyBlue1")
 	newTBI_TP_Total_Total.place(x=M3X_7,y=M3Y_7,anchor="nw")
-	tk.Label(newTBI_TP_Total_Total, textvariable=TBI_QUANTITY_TOTAL_TOTAL, font=('微軟正黑體', 11, 'bold'), bg="SkyBlue1").place(x=41,y=0,anchor="n")
+	tk.Label(newTBI_TP_Total_Total, textvariable=RADIA_QUANTITY_TOTAL_TOTAL, font=('微軟正黑體', 11, 'bold'), bg="SkyBlue1").place(x=41,y=0,anchor="n")
 
 	# 實驗天數資料顯示區
 	M4X = 10
@@ -1936,7 +1960,7 @@ def WindowsView():
 
 	# 刪除實驗數據區
 	M6X = 370
-	M6Y = 175
+	M6Y = 255
 	tk.Label(tkWin, text="刪除實驗數據", font=('微軟正黑體', 11), bg="gray75").place(x=M6X,y=M6Y,anchor="nw")
 	tk.Label(tkWin, text="實驗日期", font=('微軟正黑體', 11)).place(x=M6X+100,y=M6Y,anchor="nw")
 	DEL_Cal = DateEntry(tkWin, width=10, background='gray', dateformat=4, font=('微軟正黑體', 10, "bold"), foreground='white', borderwidth=2, state="readonly")
@@ -1951,8 +1975,8 @@ def WindowsView():
 
 	# 實驗數據展示區
 	M7X = 370
-	M7Y = 210
-	tk.Label(tkWin, text="實驗數據詳細資料(TBI)", font=('微軟正黑體', 11), bg="gray75").place(x=M7X,y=M7Y,anchor="nw")
+	M7Y = 290
+	tk.Label(tkWin, text="實驗數據詳細資料(輻射)", font=('微軟正黑體', 11), bg="gray75").place(x=M7X,y=M7Y,anchor="nw")
 	M7TB_X = M7X
 	M7TB_Y = M7Y + 48
 	ExpDate_TBT = ['日期', '組別', '時間點', '編號', '*LME', '*SME', '中央(time)', '目標(time)', '一般(time)', 'TMS(cm/s)', '總距離(cm)', '總時間(s)', '採用']
@@ -1982,18 +2006,18 @@ def WindowsView():
 	tk.Label(tkWin, 
 		textvariable=EXPTABLE_PAGE_STATE, 
 		font=('微軟正黑體', 10)
-	).place(x=M7X+400,y=M7Y+2, anchor="n") # 350~450
+	).place(x=M7X+420,y=M7Y+2, anchor="n") # 350~450
 	EXPTABLE_SEARCH_BT = tk.Button(tkWin, text='選擇篩選資料查詢條件', font=('微軟正黑體', 9), command=FilterData_ExperimentForTBI)
-	EXPTABLE_SEARCH_BT.place(x=M7X+160,y=M7Y-2,anchor="nw")
+	EXPTABLE_SEARCH_BT.place(x=M7X+180,y=M7Y-2,anchor="nw")
 	EXPTABLE_PAGE_L_BT = tk.Button(tkWin, text='◀ 上一頁', font=('微軟正黑體', 9), command=lambda: MoveUpDownDataTable('Up'), state="disabled")
-	EXPTABLE_PAGE_L_BT.place(x=M7X+290,y=M7Y-2,anchor="nw") #60
+	EXPTABLE_PAGE_L_BT.place(x=M7X+310,y=M7Y-2,anchor="nw") #60
 	EXPTABLE_PAGE_R_BT = tk.Button(tkWin, text='下一頁 ▶', font=('微軟正黑體', 9), command=lambda: MoveUpDownDataTable('Down'), state="disabled")
-	EXPTABLE_PAGE_R_BT.place(x=M7X+450,y=M7Y-2,anchor="nw") #60
+	EXPTABLE_PAGE_R_BT.place(x=M7X+470,y=M7Y-2,anchor="nw") #60
 	EXPTABLE_PAGE_TOTAL.set("共%d筆" %(0))
 	tk.Label(tkWin, 
 		textvariable=EXPTABLE_PAGE_TOTAL, 
 		font=('微軟正黑體', 11, 'bold')
-	).place(x=M7X+510,y=M7Y, anchor="nw") # 350~450
+	).place(x=M7X+530,y=M7Y, anchor="nw") # 350~450
 
 	for j in range(EXPTABLE_SQL_DATA_MAXITEM):
 		TB_TBData_Y = M7TB_Y + 28 + 25*j
@@ -2011,14 +2035,14 @@ def WindowsView():
 			# 	EXPTABLE_Route_BT[j].place(x=int(ExpDate_TBT_Size[len(ExpDate_TBT)-1]/2),y=-2,anchor="n")
 	
 	TB_command = "註：*LME = Long-Term Memory Error (長期記憶錯誤) *SME = Short-Term Memory Error (短期記憶錯誤) *TMS = Total Mean Speed(總平均速率)"
-	tk.Label(tkWin, text=TB_command, font=('微軟正黑體', 8)).place(x=M7TB_X,y=M7TB_Y+402,anchor="nw")
+	tk.Label(tkWin, text=TB_command, font=('微軟正黑體', 8)).place(x=M7TB_X,y=M7TB_Y+328,anchor="nw")
 	
 	# 路徑結果圖顯示區
 	M20X = 950
 	M20Y = 10
 	tk.Label(tkWin, text="路徑結果圖顯示區", font=('微軟正黑體', 11), bg="gray75").place(x=M20X,y=M20Y,anchor="nw")
 	IMG_TP = ['請選擇時間點', '手術前', '手術後7天', '手術後14天', '手術後28天', '手術後3個月', '手術後6個月', '手術後9個月']
-	IMG_TBI_G = ['請選擇組別', 'Sham', 'Sham+NS', 'Sham+MSC', 'rTBI+NS', 'rTBI+MSC']
+	IMG_TBI_G = ['請選擇組別', '0gy', '2gy', '4gy', '10gy', '2gyi', '4gyi', '10gyi']
 	IMG_TP_Combo = ttk.Combobox(tkWin, width=10, values=IMG_TP, font=('微軟正黑體', 10), state="readonly")
 	IMG_TP_Combo.place(x=M20X,y=M20Y+34,anchor="nw")
 	IMG_TP_Combo.current(0)
@@ -2043,9 +2067,9 @@ def WindowsView():
 	# tk.Button(tkWin, text='試色', width=7, font=('微軟正黑體', 10), command=EDCIP.testingColor).place(x=M20X+160,y=M20Y+60,anchor="nw")
 
 	tkWin.protocol("WM_DELETE_WINDOW", Main_WindowsClosing)
-	updateTBI_Quantity(TBI_QUANTITY_DATA_TYPE)
-	updateTBI_ExpDateCal(CAL_CURRENT_M)
-	updateTBI_ExpDataTable(EXPTABLE_SQL_Query, EXPTABLE_SQL_DATA_PAGE, EXPTABLE_SQL_DATA_MAXITEM)
+	updateRADIA_QUANTITY(RADIA_QUANTITY_DATA_TYPE)
+	updateRADIA_ExpDateCal(CAL_CURRENT_M)
+	updateRADIA_ExpDataTable(EXPTABLE_SQL_Query, EXPTABLE_SQL_DATA_PAGE, EXPTABLE_SQL_DATA_MAXITEM)
 	WriteConsoleMsg("NONE", "歡迎使用 %s" %(SYSTEM_NAME))
 	tkWin.after(10,LoopMain)
 	tkWin.mainloop()
