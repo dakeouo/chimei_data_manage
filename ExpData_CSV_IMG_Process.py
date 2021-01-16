@@ -114,9 +114,10 @@ def transfer2CoodinateList(CSV_FileName, expLatency): #將CSV內的資料轉換�
 	newCSV_Info = []
 	tranStart = 0
 	# print(len(CSV_Info), expLatency)
-	if len(CSV_Info) > expLatency:
-		print("超過Latency範圍!!", len(CSV_Info), expLatency, CSV_FileName)
-		tranStart = (len(CSV_Info) - round(expLatency*(1 - 0.038)))*20
+	if len(CSV_Info)*0.85 > expLatency:
+	# if round(len(CSV_Info)*(1 - 0.8)) > expLatency:
+		print("超過Latency範圍!!", len(CSV_Info), expLatency, "%0.4f" %(expLatency/len(CSV_Info)), CSV_FileName)
+		tranStart = (len(CSV_Info) - round(expLatency/0.85))*20
 		# print(tranStart, len(CSV_Info)*20)
 	else:
 		tranStart = 0
@@ -131,9 +132,9 @@ def transfer2CoodinateList(CSV_FileName, expLatency): #將CSV內的資料轉換�
 
 def RouteInfo(CSV_FileName): #匯入CSV檔路徑資料並整理成每秒20個點
 	CSV_Info = readCSV2List(CSV_FileName)
-	newCSV_Info = []
+	newRow = []
 	for i in range(1,len(CSV_Info)):
-		row = []
+		# row = []
 		for j in range(0,len(CSV_Info[i])):
 			if CSV_Info[i][j] != "":
 				try:
@@ -144,26 +145,27 @@ def RouteInfo(CSV_FileName): #匯入CSV檔路徑資料並整理成每秒20個點
 				except:
 					print(CSV_FileName)
 					print("[%d,%d]" %(i,j))
+
 				if newP[0] == -20 and newP[1] == -20 and i > 0:
-					if j == 0:
-						try:
-							idx = len(newCSV_Info)-1
-							newP = [newCSV_Info[idx][len(newCSV_Info[idx])-1][0], newCSV_Info[idx][len(newCSV_Info[idx])-1][1]]
-						except:
-							print(CSV_FileName)
-							print("[%d,%d]" %(i,j))
-							print(len(newCSV_Info)-1)
-					else:
-						newP = [row[len(row)-1][0], row[len(row)-1][1]]
-				row.append(newP)
-		newRow = []
-		if len(row) != 20:
-			for j in range(0,20):
-				idx = int((len(row)/20)*j)
-				newRow.append([row[idx][0], row[idx][1]])
-			newCSV_Info.append(newRow)
-		else:
-			newCSV_Info.append(row)
+					if len(newRow) > 0:
+						newP = [newRow[len(newRow)-1][0], newRow[len(newRow)-1][0]]
+						newRow.append(newP)
+				else:
+					newRow.append(newP)
+		
+		newCSV_Info = []
+		coodiCount = 0
+		coodiRow = []
+		for row in newRow:
+			if coodiCount < 20:
+				# print(row)
+				coodiRow.append(row)
+				coodiCount = coodiCount + 1
+			else:
+				newCSV_Info.append(coodiRow)
+				coodiCount = 0
+				coodiRow = []
+
 	return newCSV_Info
 
 def Line2PointTotalDistance(line_point1, line_point2, target_point):
@@ -424,9 +426,9 @@ def Route2_Colorful_Img(ExpDate, ExpRatDataNo, ExpLatency):
 	# ]
 	pathCoodi = []
 	pathValue = []
-	colorLevel1 = 1*60*20
-	colorLevel2 = 3*60*20
-	colorLevel3 = 6*60*20
+	colorLevel1 = 2*60*20
+	colorLevel2 = 5*60*20
+	colorLevel3 = 8*60*20
 	for i in range(0, RouteCount):
 		nowI = i
 		if nowI < colorLevel1:
@@ -478,9 +480,11 @@ def Route2_Colorful_Img(ExpDate, ExpRatDataNo, ExpLatency):
 			if pathValue[nowI][i] > 0 and i < 3:
 				idx = idx + pow(2, i)
 		ptimes = round(math.sqrt(ptimes))
+		ptimes = 1
 		if idx == 0:
 			cv2.circle(BGR_Img, convert(pathCoodi[nowI]), ptimes, (100,100,100), -1)
 			cv2.circle(newImg, convert(pathCoodi[nowI]), ptimes, pathColor[idx], -1)
+	
 	for i in range(0, len(pathCoodi)):
 		nowI = len(pathCoodi) - i - 1
 		idx = 0
@@ -491,6 +495,7 @@ def Route2_Colorful_Img(ExpDate, ExpRatDataNo, ExpLatency):
 				idx = idx + pow(2, i)
 		ptimes1 = ptimes
 		ptimes = round(math.sqrt(ptimes))
+		ptimes = 1
 		if idx == 1 or idx == 2 or idx == 4:
 			cv2.circle(newImg, convert(pathCoodi[nowI]), ptimes, pathColor[idx], -1)
 			BGR_Color = [int((idx & 4)/4)*255, int((idx & 2)/2)*255, int((idx & 1)/1)*255]
@@ -499,6 +504,7 @@ def Route2_Colorful_Img(ExpDate, ExpRatDataNo, ExpLatency):
 			if BGR_Times > 255:
 				BGR_Times = 255
 			cv2.circle(BGR_Times_Img, convert(pathCoodi[nowI]), 1, (BGR_Times, BGR_Times, BGR_Times), -1)
+	
 	for i in range(0, len(pathCoodi)):
 		nowI = len(pathCoodi) - i - 1
 		idx = 0
@@ -509,6 +515,7 @@ def Route2_Colorful_Img(ExpDate, ExpRatDataNo, ExpLatency):
 				idx = idx + pow(2, i)
 		ptimes1 = ptimes
 		ptimes = round((math.sqrt(ptimes)))
+		ptimes = 1
 		if idx == 3 or idx == 5 or idx == 6:
 			cv2.circle(newImg, convert(pathCoodi[nowI]), ptimes, pathColor[idx], -1)
 			BGR_Color = [int((idx & 4)/4)*255, int((idx & 2)/2)*255, int((idx & 1)/1)*255]
@@ -517,6 +524,7 @@ def Route2_Colorful_Img(ExpDate, ExpRatDataNo, ExpLatency):
 			if BGR_Times > 255:
 				BGR_Times = 255
 			cv2.circle(BGR_Times_Img, convert(pathCoodi[nowI]), 1, (BGR_Times, BGR_Times, BGR_Times), -1)
+	
 	for i in range(0, len(pathCoodi)):
 		nowI = len(pathCoodi) - i - 1
 		idx = 0
@@ -527,6 +535,7 @@ def Route2_Colorful_Img(ExpDate, ExpRatDataNo, ExpLatency):
 				idx = idx + pow(2, i)
 		ptimes1 = ptimes
 		ptimes = round((math.sqrt(ptimes)))
+		ptimes = 1
 		if idx == 7:
 			cv2.circle(newImg, convert(pathCoodi[nowI]), ptimes, pathColor[idx], -1)
 			BGR_Color = [int((idx & 4)/4)*255, int((idx & 2)/2)*255, int((idx & 1)/1)*255]
@@ -539,7 +548,36 @@ def Route2_Colorful_Img(ExpDate, ExpRatDataNo, ExpLatency):
 	saveNewIMGRoute(ExpRatDataNo, BGR_Img, "IMG_colorful_1")
 	saveNewIMGRoute(ExpRatDataNo, BGR_Times_Img, "IMG_colorful_1_times")
 
-def Route2_Segment_Img(ExpDate, ExpRatDataNo, ExpLatency):
+def Route2_Seg4Part_Img(ExpDate, ExpRatDataNo, ExpLatency, ratGroups):
+	global DestinationFolder, Pixel2CM_Convert
+
+	# 讀取CSV內所有路徑座標點[會變成一維陣列]
+	CSV_Path = "%s/CSV/%s.csv" %(DestinationFolder, ExpRatDataNo)
+	RoutePath = transfer2CoodinateList(CSV_Path, ExpLatency)
+	# print(len(RoutePath))
+
+	# 刪除資料夾
+	try:
+		shutil.rmtree("%s/IMG_Seg4Part/%s" %(DestinationFolder, ExpRatDataNo))
+	except OSError as e:
+		print(e)
+
+	# 繪製圖片
+	RouteCount = len(RoutePath)
+	segBase = round(RouteCount/4)
+	seg4Gate = [0, segBase*1, segBase*2, segBase*3, RouteCount]
+	print(seg4Gate)
+	for i in range(4):
+		newImg = makeBlackImage()
+		newImg = cv2.resize(newImg,(480, 480),interpolation=cv2.INTER_CUBIC)
+		minR = seg4Gate[i]
+		maxR = seg4Gate[i+1]
+		for j in range(minR, maxR):
+			cv2.circle(newImg, convert(RoutePath[j]), 2, (0,255,0), -1)
+		imgName = "%s_%s_%s" %(ExpRatDataNo, ratGroups, chr(65+i))
+		saveNewIMGRoute_forRatID(imgName, newImg, "Part%s" %(chr(65+i)), "IMG_Seg4Part")
+
+def Route2_Segment_Img(ExpDate, ExpRatDataNo, ExpLatency, ratGroups):
 	global DestinationFolder, Pixel2CM_Convert
 
 	# 讀取CSV內所有路徑座標點[會變成一維陣列]
@@ -556,7 +594,7 @@ def Route2_Segment_Img(ExpDate, ExpRatDataNo, ExpLatency):
 	# 繪製圖片
 	RouteCount = len(RoutePath)
 	segSec = 3*20
-	segTot = 600
+	segTot = 300
 	for i in range(0, segTot):
 		newImg = makeBlackImage()
 		newImg = cv2.resize(newImg,(480, 480),interpolation=cv2.INTER_CUBIC)
@@ -567,11 +605,11 @@ def Route2_Segment_Img(ExpDate, ExpRatDataNo, ExpLatency):
 				cv2.circle(newImg, convert(RoutePath[j]), 2, (0,255,0), -1)
 			else:
 				break
-		imgName = "%s_%03d" %(ExpRatDataNo, (i+1))
-		saveNewIMGRoute_forRatID(imgName, newImg, ExpRatDataNo, "IMG_Segment")
+		imgName = "%s_%s_%03d" %(ExpRatDataNo, ratGroups, (i+1))
+		saveNewIMGRoute_forRatID(imgName, newImg, "%s_%s" %(ExpRatDataNo, ratGroups), "IMG_Segment")
 		
 
-def Route2_1Min_Img(ExpDate, ExpRatDataNo, ExpLatency):
+def Route2_1Min_Img(ExpDate, ExpRatDataNo, ExpLatency, ratGroups):
 	global DestinationFolder, Pixel2CM_Convert
 
 	# 讀取CSV內所有路徑座標點[會變成一維陣列]
@@ -580,17 +618,33 @@ def Route2_1Min_Img(ExpDate, ExpRatDataNo, ExpLatency):
 	# print(len(RoutePath))
 
 	# 繪製圖片
+	RouteCount = len(RoutePath)
+	colorLevel1 = 120*20
+
+	# 繪製前一分鐘圖片
 	newImg = makeBlackImage()
 	newImg = cv2.resize(newImg,(480, 480),interpolation=cv2.INTER_CUBIC)
-	RouteCount = len(RoutePath)
-	colorLevel1 = 60*20
-	for i in range(0, RouteCount):
-		nowI = RouteCount - i - 1
-		if nowI < colorLevel1:
-			cv2.circle(newImg, convert(RoutePath[nowI]), 1, (0,255,0), -1)
-		# elif nowI >= colorLevel1:
-		# 	cv2.circle(newImg, convert(RoutePath[nowI]), 1, (100,100,100), -1)
-	saveNewIMGRoute(ExpRatDataNo, newImg, "IMG_1min")
+	if RouteCount < colorLevel1:
+		Level1End = RouteCount
+	else:
+		Level1End = colorLevel1
+	for i in range(0, Level1End):
+		cv2.circle(newImg, convert(RoutePath[i]), 1, (0,255,0), -1)
+	# saveNewIMGRoute(ExpRatDataNo, newImg, "IMG_Front(2min)")
+	saveNewIMGRoute(ExpRatDataNo + "_%s" %(ratGroups), newImg, "IMG_Front(2min)")
+
+	# 繪製最後一分鐘圖片
+	newImg1 = makeBlackImage()
+	newImg1 = cv2.resize(newImg1,(480, 480),interpolation=cv2.INTER_CUBIC)
+	if RouteCount > colorLevel1:
+		Level2Start = RouteCount - colorLevel1
+	else:
+		Level2Start = 0
+	for i in range(Level2Start, RouteCount):
+		cv2.circle(newImg1, convert(RoutePath[i]), 1, (0,255,0), -1)
+	# saveNewIMGRoute(ExpRatDataNo, newImg1, "IMG_Back(2min)")
+	saveNewIMGRoute(ExpRatDataNo + "_%s" %(ratGroups), newImg1, "IMG_Back(2min)")
+
 
 def testingColor():
 	pathColor = [ #深灰 紅 橘 黃 藍 紫 綠 白

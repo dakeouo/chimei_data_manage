@@ -1618,7 +1618,8 @@ def CalculateDistance():
 		else:
 			WriteConsoleMsg("NOTICE", "更新實驗數據距離時間計算失敗，成功%d/%d筆資料(實驗編號：%s 實驗日期：%s 時間點：%s)" %(SuccessCount, ExpNo, ExpDate, ExpTP))
 
-def Draw_Segment_Img():
+
+def DrawTBI_ImgExport(method):
 	global SQL_CONN, EDCIP
 	sql_query = "SELECT \"ExpNo\",\"ExpDate\",\"Timepoint\", \"Total\" FROM \"VIEW_Experiment_Overview_TBI\" WHERE \"Model\" = \"TBI\""
 	cursor = SQL_CONN.execute(sql_query)
@@ -1639,104 +1640,33 @@ def Draw_Segment_Img():
 		ExpTP = ExpDate_List[i]["Timepoint"]
 		WriteConsoleMsg("INFO", "開始進行實驗數據距離時間計算...(實驗編號：%s 實驗日期：%s 時間點：%s)" %(ExpNo, ExpDate, ExpTP))
 
-		sql_query = "SELECT \"serial_data_id\", \"latency\" FROM \"VIEW_TBI_ExpDetail_Data\" WHERE \"ExpDate\" = \"{0}\" AND \"timepoints\" = \"{1}\" AND \"serial_data_id\" LIKE \"{2}%\"".format(ExpDate, ExpTP, ExpNo)
+		sql_query = "SELECT \"serial_data_id\", \"latency\", \"groups\" FROM \"VIEW_TBI_ExpDetail_Data\" WHERE \"ExpDate\" = \"{0}\" AND \"isFilter\" = 1 AND \"timepoints\" = \"{1}\" AND \"serial_data_id\" LIKE \"{2}%\"".format(ExpDate, ExpTP, ExpNo)
 		cursor = SQL_CONN.execute(sql_query)
 		result = cursor.fetchall()
 		totalCount = len(result)
 		SuccessCount = 0
 		for row in result:
-			print(row[0])
+			print(row[0], row[2])
 			try:
-				EDCIP.Route2_Segment_Img(thisDate, row[0], row[1]) #總距離 分別距離 分別時間 [CTN = Central Target Normal]
+				if method == "1_Min":
+					EDCIP.Route2_1Min_Img(thisDate, row[0], row[1], row[2]) #總距離 分別距離 分別時間 [CTN = Central Target Normal]
+				elif method == "Colorful":
+					EDCIP.Route2_Colorful_Img(thisDate, row[0], row[1]) #總距離 分別距離 分別時間 [CTN = Central Target Normal]
+				elif method == "Segment":
+					EDCIP.Route2_Segment_Img(thisDate, row[0], row[1], row[2]) #總距離 分別距離 分別時間 [CTN = Central Target Normal]
+				elif method == "Seg4Part":
+					EDCIP.Route2_Seg4Part_Img(thisDate, row[0], row[1], row[2]) #總距離 分別距離 分別時間 [CTN = Central Target Normal]
+				else:
+					SuccessCount = SuccessCount - 1
 				SuccessCount = SuccessCount + 1
 			except:
-				WriteConsoleMsg("NOTICE", "更新 實驗數據編號%s 距離時間計算時發生問題!!" %(row[0]))
+				WriteConsoleMsg("NOTICE", "更新 實驗數據編號%s 匯出圖片時發生問題!!" %(row[0]))
 
 		if SuccessCount != 0:
 			WriteConsoleMsg("GOOD", "更新實驗數據距離時間計算成功，共%d筆資料(實驗編號：%s 實驗日期：%s 時間點：%s)" %(SuccessCount, ExpNo, ExpDate, ExpTP))
 		else:
 			WriteConsoleMsg("NOTICE", "更新實驗數據距離時間計算失敗，成功%d/%d筆資料(實驗編號：%s 實驗日期：%s 時間點：%s)" %(SuccessCount, totalCount, ExpNo, ExpDate, ExpTP))
 
-
-def Draw_Colorful_Img():
-	global SQL_CONN, EDCIP
-	sql_query = "SELECT \"ExpNo\",\"ExpDate\",\"Timepoint\", \"Total\" FROM \"VIEW_Experiment_Overview_TBI\" WHERE \"Model\" = \"TBI\""
-	cursor = SQL_CONN.execute(sql_query)
-	result = cursor.fetchall()
-	ExpDate_List = []
-	for row in result:
-		sql_query = "SELECT \"tp_show\" FROM \"exp_timepoint\" WHERE \"tp_no\" = \"%s\"" %(row[2])
-		cursor = SQL_CONN.execute(sql_query)
-		tp = cursor.fetchone()
-		ExpDate_List.append({"ExpID":row[0], "ExpDate":row[1], "Timepoint":tp[0]})
-	# print(ExpDate_List)
-	for i in range(0, len(ExpDate_List)):
-		print("==========%d==========" %(i))
-		ExpNo = ExpDate_List[i]["ExpID"]
-		ExpDate = ExpDate_List[i]["ExpDate"]
-		spDate = ExpDate.split("/")
-		thisDate = [int(spDate[0]), int(spDate[1]), int(spDate[2])]
-		ExpTP = ExpDate_List[i]["Timepoint"]
-		WriteConsoleMsg("INFO", "開始進行實驗數據距離時間計算...(實驗編號：%s 實驗日期：%s 時間點：%s)" %(ExpNo, ExpDate, ExpTP))
-
-		sql_query = "SELECT \"serial_data_id\", \"latency\" FROM \"VIEW_TBI_ExpDetail_Data\" WHERE \"ExpDate\" = \"{0}\" AND \"timepoints\" = \"{1}\" AND \"serial_data_id\" LIKE \"{2}%\"".format(ExpDate, ExpTP, ExpNo)
-		cursor = SQL_CONN.execute(sql_query)
-		result = cursor.fetchall()
-		totalCount = len(result)
-		SuccessCount = 0
-		for row in result:
-			print(row[0])
-			try:
-				EDCIP.Route2_Colorful_Img(thisDate, row[0], row[1]) #總距離 分別距離 分別時間 [CTN = Central Target Normal]
-				SuccessCount = SuccessCount + 1
-			except:
-				WriteConsoleMsg("NOTICE", "更新 實驗數據編號%s 距離時間計算時發生問題!!" %(row[0]))
-
-		if SuccessCount != 0:
-			WriteConsoleMsg("GOOD", "更新實驗數據距離時間計算成功，共%d筆資料(實驗編號：%s 實驗日期：%s 時間點：%s)" %(SuccessCount, ExpNo, ExpDate, ExpTP))
-		else:
-			WriteConsoleMsg("NOTICE", "更新實驗數據距離時間計算失敗，成功%d/%d筆資料(實驗編號：%s 實驗日期：%s 時間點：%s)" %(SuccessCount, totalCount, ExpNo, ExpDate, ExpTP))
-
-
-
-def Draw_1_Min_Img():
-	global SQL_CONN, EDCIP
-	sql_query = "SELECT \"ExpNo\",\"ExpDate\",\"Timepoint\", \"Total\" FROM \"VIEW_Experiment_Overview_TBI\" WHERE \"Model\" = \"TBI\""
-	cursor = SQL_CONN.execute(sql_query)
-	result = cursor.fetchall()
-	ExpDate_List = []
-	for row in result:
-		sql_query = "SELECT \"tp_show\" FROM \"exp_timepoint\" WHERE \"tp_no\" = \"%s\"" %(row[2])
-		cursor = SQL_CONN.execute(sql_query)
-		tp = cursor.fetchone()
-		ExpDate_List.append({"ExpID":row[0], "ExpDate":row[1], "Timepoint":tp[0]})
-	# print(ExpDate_List)
-	for i in range(0, len(ExpDate_List)):
-		print("==========%d==========" %(i))
-		ExpNo = ExpDate_List[i]["ExpID"]
-		ExpDate = ExpDate_List[i]["ExpDate"]
-		spDate = ExpDate.split("/")
-		thisDate = [int(spDate[0]), int(spDate[1]), int(spDate[2])]
-		ExpTP = ExpDate_List[i]["Timepoint"]
-		WriteConsoleMsg("INFO", "開始進行實驗數據距離時間計算...(實驗編號：%s 實驗日期：%s 時間點：%s)" %(ExpNo, ExpDate, ExpTP))
-
-		sql_query = "SELECT \"serial_data_id\", \"latency\" FROM \"VIEW_TBI_ExpDetail_Data\" WHERE \"ExpDate\" = \"{0}\" AND \"timepoints\" = \"{1}\" AND \"serial_data_id\" LIKE \"{2}%\"".format(ExpDate, ExpTP, ExpNo)
-		cursor = SQL_CONN.execute(sql_query)
-		result = cursor.fetchall()
-		totalCount = len(result)
-		SuccessCount = 0
-		for row in result:
-			print(row[0])
-			try:
-				EDCIP.Route2_1Min_Img(thisDate, row[0], row[1]) #總距離 分別距離 分別時間 [CTN = Central Target Normal]
-				SuccessCount = SuccessCount + 1
-			except:
-				WriteConsoleMsg("NOTICE", "更新 實驗數據編號%s 距離時間計算時發生問題!!" %(row[0]))
-
-		if SuccessCount != 0:
-			WriteConsoleMsg("GOOD", "更新實驗數據距離時間計算成功，共%d筆資料(實驗編號：%s 實驗日期：%s 時間點：%s)" %(SuccessCount, ExpNo, ExpDate, ExpTP))
-		else:
-			WriteConsoleMsg("NOTICE", "更新實驗數據距離時間計算失敗，成功%d/%d筆資料(實驗編號：%s 實驗日期：%s 時間點：%s)" %(SuccessCount, totalCount, ExpNo, ExpDate, ExpTP))
 
 def ChangeIMGViewSize():
 	global IMG_VIEW_COUNT, IMG_NOW_Combo, IMG_Page_STATE, IMG_FOLDER, IMG_PAGE_CHANGE
@@ -1783,7 +1713,7 @@ def ExportImg():
 	else:
 		WriteConsoleMsg("NOTICE", "尚未選擇欲匯出的資料夾")
 
-def ExportImg():
+def ExportCsv():
 	global IMG_Query, IMG_TP_Combo, IMG_TBIG_Combo
 
 	covertTP = {'手術前':"Pre", '手術後7天':"D07", '手術後14天':"D14", '手術後28天':"D28", '手術後3個月':"M03", '手術後6個月':"M06", '手術後9個月':"M09"}
@@ -2066,13 +1996,14 @@ def WindowsView():
 	IMG_Page_Label = tk.Label(tkWin, text="無資料", font=('微軟正黑體', 10))
 	IMG_Page_Label.place(x=M20X+158+42,y=M20Y,anchor="n")
 
-	tk.Button(tkWin, text='更新全部\n一分色違', width=7, font=('微軟正黑體', 10), command=Draw_1_Min_Img).place(x=M20X,y=M20Y+60,anchor="nw")
-	tk.Button(tkWin, text='更新全部\n究極色違', width=7, font=('微軟正黑體', 10), command=Draw_Colorful_Img).place(x=M20X+80,y=M20Y+60,anchor="nw")
-	tk.Button(tkWin, text='更新全部\n究極進化', width=7, font=('微軟正黑體', 10), command=Draw_Segment_Img).place(x=M20X+160,y=M20Y+60,anchor="nw")
-	tk.Button(tkWin, text='更換圖片\n顯示模式', width=7, font=('微軟正黑體', 10), command=ChangeIMGViewSize).place(x=M20X+240,y=M20Y+60,anchor="nw")
-	
+	tk.Button(tkWin, text='更新全部\n一分色違', width=7, font=('微軟正黑體', 10), command=lambda: DrawTBI_ImgExport('1_Min')).place(x=M20X,y=M20Y+60,anchor="nw")
+	tk.Button(tkWin, text='更新全部\n究極色違', width=7, font=('微軟正黑體', 10), command=lambda: DrawTBI_ImgExport('Colorful')).place(x=M20X+80,y=M20Y+60,anchor="nw")
+	tk.Button(tkWin, text='更新全部\n究極進化', width=7, font=('微軟正黑體', 10), command=lambda: DrawTBI_ImgExport('Segment')).place(x=M20X+160,y=M20Y+60,anchor="nw")
+	tk.Button(tkWin, text='更新全部\n均切四塊', width=7, font=('微軟正黑體', 10), command=lambda: DrawTBI_ImgExport('Seg4Part')).place(x=M20X+240,y=M20Y+60,anchor="nw")
+
 	tk.Button(tkWin, text='匯出目前\n所選圖片', width=7, font=('微軟正黑體', 10), command=ExportImg).place(x=M20X,y=M20Y+110,anchor="nw")
-	tk.Button(tkWin, text='匯出目前\n所選CSV', width=7, font=('微軟正黑體', 10), command=ExportImg).place(x=M20X+80,y=M20Y+110,anchor="nw")
+	tk.Button(tkWin, text='匯出目前\n所選CSV', width=7, font=('微軟正黑體', 10), command=ExportCsv).place(x=M20X+80,y=M20Y+110,anchor="nw")
+	tk.Button(tkWin, text='更換圖片\n顯示模式', width=7, font=('微軟正黑體', 10), command=ChangeIMGViewSize).place(x=M20X+160,y=M20Y+110,anchor="nw")
 	# tk.Button(tkWin, text='試色', width=7, font=('微軟正黑體', 10), command=EDCIP.testingColor).place(x=M20X+160,y=M20Y+60,anchor="nw")
 
 	tkWin.protocol("WM_DELETE_WINDOW", Main_WindowsClosing)
