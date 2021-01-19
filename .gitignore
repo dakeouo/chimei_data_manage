@@ -1,6 +1,7 @@
 rowdata/*
 SQL_FILE/*
 __pycache__/*
+_myTemp_/*
 
 *.png
 *.jpg

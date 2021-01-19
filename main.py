@@ -1,6 +1,9 @@
 import sqlite3
+import os
+import shutil
 import cv2
 import csv
+import matplotlib.pyplot as plt
 from datetime import datetime
 import tkinter as tk
 import tkinter.ttk as ttk
@@ -14,7 +17,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import ExpData_CSV_IMG_Process as EDCIP
-
+import ExpData_ModelChart as EDMC
 # SQL 語句命令
 # INSERT INTO table_name(field1,field2,...,fieldn) VALUES(val1,val2,...,valn)   
 # SELECT * FROM table [WHERE field='value' [AND field='value']] 
@@ -398,6 +401,8 @@ def Main_WindowsClosing():
 		FilterData.destroy()
 	if WIN_CLOSE_LoadPath:
 		LoadPath.destroy()
+	shutil.rmtree("_myTemp_")
+	plt.close()
 
 def changeHavePath():
 	global LOAD_EXP_HAVE_PATH, TK_BT_EXP_HAVE_PATH
@@ -1974,6 +1979,14 @@ def WindowsView():
 	TB_command = "註：*LME = Long-Term Memory Error (長期記憶錯誤) *SME = Short-Term Memory Error (短期記憶錯誤) *TMS = Total Mean Speed(總平均速率)"
 	tk.Label(tkWin, text=TB_command, font=('微軟正黑體', 8)).place(x=M7TB_X,y=M7TB_Y+402,anchor="nw")
 	
+	tk.Button(tkWin, text='圖表測試', font=('微軟正黑體', 10), command=EDMC.ChartTest).place(x=M7X+580,y=M7Y-2,anchor="nw")
+	# Long-term / Short-term / Latency 圖表
+	tk.Button(tkWin, text='LT/ST/LATC Chart', font=('微軟正黑體', 10), bg="gray80", command=lambda: EDMC.DrawTBI_Chart("LT_ST_LATC")).place(x=M7X+550,y=M7Y-2-35,anchor="nw")
+	# 總平均速率 / 總平均距離 圖表
+	tk.Button(tkWin, text='MDIS/MSP Chart', font=('微軟正黑體', 10), bg="gray80", command=lambda: EDMC.DrawTBI_Chart("MDIS_MSP")).place(x=M7X+670,y=M7Y-2-35,anchor="nw")
+	# 於 中心/目標/一般 待的時間比例 圖表
+	tk.Button(tkWin, text='C/T/N Rate Chart', font=('微軟正黑體', 10), bg="gray80", command=lambda: EDMC.DrawTBI_Chart("CTN_Rate")).place(x=M7X+787,y=M7Y-2-35,anchor="nw")
+
 	# 路徑結果圖顯示區
 	M20X = 950
 	M20Y = 10
@@ -2015,5 +2028,6 @@ def WindowsView():
 	tkWin.mainloop()
 
 if __name__ == "__main__":
+	os.mkdir("_myTemp_")
 	SystemInit()
 	WindowsView()
