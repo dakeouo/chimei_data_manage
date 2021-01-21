@@ -1661,6 +1661,8 @@ def DrawTBI_ImgExport(method):
 					EDCIP.Route2_Segment_Img(thisDate, row[0], row[1], row[2]) #總距離 分別距離 分別時間 [CTN = Central Target Normal]
 				elif method == "Seg4Part":
 					EDCIP.Route2_Seg4Part_Img(thisDate, row[0], row[1], row[2]) #總距離 分別距離 分別時間 [CTN = Central Target Normal]
+				elif method == "FullColor":
+					EDCIP.Route2_FullColor_Img(thisDate, row[0], row[1]) #總距離 分別距離 分別時間 [CTN = Central Target Normal]
 				else:
 					SuccessCount = SuccessCount - 1
 				SuccessCount = SuccessCount + 1
@@ -2017,6 +2019,7 @@ def WindowsView():
 	tk.Button(tkWin, text='匯出目前\n所選圖片', width=7, font=('微軟正黑體', 10), command=ExportImg).place(x=M20X,y=M20Y+110,anchor="nw")
 	tk.Button(tkWin, text='匯出目前\n所選CSV', width=7, font=('微軟正黑體', 10), command=ExportCsv).place(x=M20X+80,y=M20Y+110,anchor="nw")
 	tk.Button(tkWin, text='更換圖片\n顯示模式', width=7, font=('微軟正黑體', 10), command=ChangeIMGViewSize).place(x=M20X+160,y=M20Y+110,anchor="nw")
+	tk.Button(tkWin, text='更新全部\n很多顏色', width=7, font=('微軟正黑體', 10), command=lambda: DrawTBI_ImgExport('FullColor')).place(x=M20X+240,y=M20Y+110,anchor="nw")
 	# tk.Button(tkWin, text='試色', width=7, font=('微軟正黑體', 10), command=EDCIP.testingColor).place(x=M20X+160,y=M20Y+60,anchor="nw")
 
 	tkWin.protocol("WM_DELETE_WINDOW", Main_WindowsClosing)

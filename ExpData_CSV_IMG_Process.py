@@ -401,6 +401,44 @@ def showImgPath(Img_PathID, ImgInfo_List=None, ImgFolder="IMG"):
 	newImgResult = np.vstack([newImgTitle, newImgLineAll])
 	cv2.imshow("Experimental Rat Path Trajectory", newImgResult)
 
+def Route2_FullColor_Img(ExpDate, ExpRatDataNo, ExpLatency):
+	global DestinationFolder, Pixel2CM_Convert
+
+	# 讀取CSV內所有路徑座標點[會變成一維陣列]
+	CSV_Path = "%s/CSV/%s.csv" %(DestinationFolder, ExpRatDataNo)
+	RoutePath = transfer2CoodinateList(CSV_Path, ExpLatency)
+	# print(len(RoutePath))
+
+	# 繪製圖片
+	RouteCount = len(RoutePath)
+	colorLevel1 = 120*20
+
+	# 繪製前一分鐘圖片
+	newImg = makeBlackImage()
+	newImg = cv2.resize(newImg,(480, 480),interpolation=cv2.INTER_CUBIC)
+	# if RouteCount < colorLevel1:
+	# 	Level1End = RouteCount
+	# else:
+	# 	Level1End = colorLevel1
+	
+	nowColor = [32, 32, 32]
+	colorIdx = 0
+	colorPlus = 16
+	for i in range(0, RouteCount):
+		cv2.circle(newImg, convert(RoutePath[i]), 1, (nowColor[2], nowColor[1], nowColor[0]), -1)
+		if (i%(20*10)) == 0:
+			if (nowColor[colorIdx] + colorPlus) < 255 and (nowColor[colorIdx] + colorPlus) > 0:
+				nowColor[colorIdx] = nowColor[colorIdx] + colorPlus
+			else:
+				if colorIdx < 2:
+					colorIdx = colorIdx + 1
+				else:
+					colorIdx = 0
+					colorPlus = -colorPlus
+			# print(nowColor)
+	# saveNewIMGRoute(ExpRatDataNo, newImg, "IMG_Front(2min)")
+	saveNewIMGRoute(ExpRatDataNo, newImg, "IMG_FullColor")
+
 def Route2_Colorful_Img(ExpDate, ExpRatDataNo, ExpLatency):
 	global DestinationFolder, Pixel2CM_Convert
 
@@ -608,7 +646,6 @@ def Route2_Segment_Img(ExpDate, ExpRatDataNo, ExpLatency, ratGroups):
 		imgName = "%s_%s_%03d" %(ExpRatDataNo, ratGroups, (i+1))
 		saveNewIMGRoute_forRatID(imgName, newImg, "%s_%s" %(ExpRatDataNo, ratGroups), "IMG_Segment")
 		
-
 def Route2_1Min_Img(ExpDate, ExpRatDataNo, ExpLatency, ratGroups):
 	global DestinationFolder, Pixel2CM_Convert
 
