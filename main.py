@@ -33,7 +33,7 @@ TK_BT_SetPathData = ""
 TK_BT_LoadPathData = ""
 TK_BT_ShowQuantity = ""
 TK_SHOW_CAL_Month = ""
-TK_Console_Line = ["", "", "", ""]
+TK_Console_Line = ["", "", "", "", "", ""]
 TKE_Command = ""
 DEL_Cal = ""
 TK_BT_DEL_ExpData = ""
@@ -43,7 +43,7 @@ EDCIP.CURRENT_MODEL_NAME = "TBI"
 
 tkWin = tk.Tk()
 tkWin.title(SYSTEM_NAME) #窗口名字
-tkWin.geometry('%dx%d+10+10' %(1280, 780)) #窗口大小(寬X高+X偏移量+Y偏移量)
+tkWin.geometry('%dx%d+10+10' %(1280, 700)) #窗口大小(寬X高+X偏移量+Y偏移量)
 tkWin.resizable(False, False) #禁止變更視窗大小
 
 WIN_CLOSE_LoadCSV = False
@@ -60,10 +60,12 @@ SQL_CONN = sqlite3.connect("./sqlite3_chimei_data.db") #建立資料庫連結
 CONSOLE_FLAG = 0 #新的一則訊息要寫在哪個位置
 CONSOLE_COLOR = {"GOOD": "green2", "ERROR": "orangered2", "INFO": "cyan", "NOTICE": "yellow2", "NONE": "white", "NULL": "black"}
 CONSOLE_MSG = [ # 顏色, 訊息, 上一則位置, 下一則位置
-	[CONSOLE_COLOR["NULL"], "", 3, 1],
-	[CONSOLE_COLOR["NULL"], "", 0, 2],
-	[CONSOLE_COLOR["NULL"], "", 1, 3],
-	[CONSOLE_COLOR["NULL"], "", 2, 0]
+	[CONSOLE_COLOR["NULL"], "123", 5, 1],
+	[CONSOLE_COLOR["NULL"], "123", 0, 2],
+	[CONSOLE_COLOR["NULL"], "123", 1, 3],
+	[CONSOLE_COLOR["NULL"], "123", 2, 4],
+	[CONSOLE_COLOR["NULL"], "123", 3, 5],
+	[CONSOLE_COLOR["NULL"], "123", 4, 0]
 ]
 LOAD_EXP_DATE = ""
 LOAD_EXP_MODEL = ""
@@ -138,7 +140,7 @@ def WriteConsoleMsg(level, msg):
 	MsgID = CONSOLE_FLAG
 	CONSOLE_FLAG = CONSOLE_MSG[CONSOLE_FLAG][3]
 	for i in range(len(TK_Console_Line)):
-		TK_Console_Line[3-i].config(text=CONSOLE_MSG[MsgID][1], fg=CONSOLE_MSG[MsgID][0])
+		TK_Console_Line[len(TK_Console_Line)-i-1].config(text=CONSOLE_MSG[MsgID][1], fg=CONSOLE_MSG[MsgID][0])
 		MsgID = CONSOLE_MSG[MsgID][2]
 
 def SystemInit():
@@ -1618,126 +1620,6 @@ def CalculateDistance():
 		else:
 			WriteConsoleMsg("NOTICE", "更新實驗數據距離時間計算失敗，成功%d/%d筆資料(實驗編號：%s 實驗日期：%s 時間點：%s)" %(SuccessCount, ExpNo, ExpDate, ExpTP))
 
-def Draw_Segment_Img():
-	global SQL_CONN, EDCIP
-	sql_query = "SELECT \"ExpNo\",\"ExpDate\",\"Timepoint\", \"Total\" FROM \"VIEW_Experiment_Overview_TBI\" WHERE \"Model\" = \"TBI\""
-	cursor = SQL_CONN.execute(sql_query)
-	result = cursor.fetchall()
-	ExpDate_List = []
-	for row in result:
-		sql_query = "SELECT \"tp_show\" FROM \"exp_timepoint\" WHERE \"tp_no\" = \"%s\"" %(row[2])
-		cursor = SQL_CONN.execute(sql_query)
-		tp = cursor.fetchone()
-		ExpDate_List.append({"ExpID":row[0], "ExpDate":row[1], "Timepoint":tp[0]})
-	# print(ExpDate_List)
-	for i in range(0, len(ExpDate_List)):
-		print("==========%d==========" %(i))
-		ExpNo = ExpDate_List[i]["ExpID"]
-		ExpDate = ExpDate_List[i]["ExpDate"]
-		spDate = ExpDate.split("/")
-		thisDate = [int(spDate[0]), int(spDate[1]), int(spDate[2])]
-		ExpTP = ExpDate_List[i]["Timepoint"]
-		WriteConsoleMsg("INFO", "開始進行實驗數據距離時間計算...(實驗編號：%s 實驗日期：%s 時間點：%s)" %(ExpNo, ExpDate, ExpTP))
-
-		sql_query = "SELECT \"serial_data_id\", \"latency\" FROM \"VIEW_TBI_ExpDetail_Data\" WHERE \"ExpDate\" = \"{0}\" AND \"timepoints\" = \"{1}\" AND \"serial_data_id\" LIKE \"{2}%\"".format(ExpDate, ExpTP, ExpNo)
-		cursor = SQL_CONN.execute(sql_query)
-		result = cursor.fetchall()
-		totalCount = len(result)
-		SuccessCount = 0
-		for row in result:
-			print(row[0])
-			try:
-				EDCIP.Route2_Segment_Img(thisDate, row[0], row[1]) #總距離 分別距離 分別時間 [CTN = Central Target Normal]
-				SuccessCount = SuccessCount + 1
-			except:
-				WriteConsoleMsg("NOTICE", "更新 實驗數據編號%s 距離時間計算時發生問題!!" %(row[0]))
-
-		if SuccessCount != 0:
-			WriteConsoleMsg("GOOD", "更新實驗數據距離時間計算成功，共%d筆資料(實驗編號：%s 實驗日期：%s 時間點：%s)" %(SuccessCount, ExpNo, ExpDate, ExpTP))
-		else:
-			WriteConsoleMsg("NOTICE", "更新實驗數據距離時間計算失敗，成功%d/%d筆資料(實驗編號：%s 實驗日期：%s 時間點：%s)" %(SuccessCount, totalCount, ExpNo, ExpDate, ExpTP))
-
-
-def Draw_Colorful_Img():
-	global SQL_CONN, EDCIP
-	sql_query = "SELECT \"ExpNo\",\"ExpDate\",\"Timepoint\", \"Total\" FROM \"VIEW_Experiment_Overview_TBI\" WHERE \"Model\" = \"TBI\""
-	cursor = SQL_CONN.execute(sql_query)
-	result = cursor.fetchall()
-	ExpDate_List = []
-	for row in result:
-		sql_query = "SELECT \"tp_show\" FROM \"exp_timepoint\" WHERE \"tp_no\" = \"%s\"" %(row[2])
-		cursor = SQL_CONN.execute(sql_query)
-		tp = cursor.fetchone()
-		ExpDate_List.append({"ExpID":row[0], "ExpDate":row[1], "Timepoint":tp[0]})
-	# print(ExpDate_List)
-	for i in range(0, len(ExpDate_List)):
-		print("==========%d==========" %(i))
-		ExpNo = ExpDate_List[i]["ExpID"]
-		ExpDate = ExpDate_List[i]["ExpDate"]
-		spDate = ExpDate.split("/")
-		thisDate = [int(spDate[0]), int(spDate[1]), int(spDate[2])]
-		ExpTP = ExpDate_List[i]["Timepoint"]
-		WriteConsoleMsg("INFO", "開始進行實驗數據距離時間計算...(實驗編號：%s 實驗日期：%s 時間點：%s)" %(ExpNo, ExpDate, ExpTP))
-
-		sql_query = "SELECT \"serial_data_id\", \"latency\" FROM \"VIEW_TBI_ExpDetail_Data\" WHERE \"ExpDate\" = \"{0}\" AND \"timepoints\" = \"{1}\" AND \"serial_data_id\" LIKE \"{2}%\"".format(ExpDate, ExpTP, ExpNo)
-		cursor = SQL_CONN.execute(sql_query)
-		result = cursor.fetchall()
-		totalCount = len(result)
-		SuccessCount = 0
-		for row in result:
-			print(row[0])
-			try:
-				EDCIP.Route2_Colorful_Img(thisDate, row[0], row[1]) #總距離 分別距離 分別時間 [CTN = Central Target Normal]
-				SuccessCount = SuccessCount + 1
-			except:
-				WriteConsoleMsg("NOTICE", "更新 實驗數據編號%s 距離時間計算時發生問題!!" %(row[0]))
-
-		if SuccessCount != 0:
-			WriteConsoleMsg("GOOD", "更新實驗數據距離時間計算成功，共%d筆資料(實驗編號：%s 實驗日期：%s 時間點：%s)" %(SuccessCount, ExpNo, ExpDate, ExpTP))
-		else:
-			WriteConsoleMsg("NOTICE", "更新實驗數據距離時間計算失敗，成功%d/%d筆資料(實驗編號：%s 實驗日期：%s 時間點：%s)" %(SuccessCount, totalCount, ExpNo, ExpDate, ExpTP))
-
-
-
-def Draw_1_Min_Img():
-	global SQL_CONN, EDCIP
-	sql_query = "SELECT \"ExpNo\",\"ExpDate\",\"Timepoint\", \"Total\" FROM \"VIEW_Experiment_Overview_TBI\" WHERE \"Model\" = \"TBI\""
-	cursor = SQL_CONN.execute(sql_query)
-	result = cursor.fetchall()
-	ExpDate_List = []
-	for row in result:
-		sql_query = "SELECT \"tp_show\" FROM \"exp_timepoint\" WHERE \"tp_no\" = \"%s\"" %(row[2])
-		cursor = SQL_CONN.execute(sql_query)
-		tp = cursor.fetchone()
-		ExpDate_List.append({"ExpID":row[0], "ExpDate":row[1], "Timepoint":tp[0]})
-	# print(ExpDate_List)
-	for i in range(0, len(ExpDate_List)):
-		print("==========%d==========" %(i))
-		ExpNo = ExpDate_List[i]["ExpID"]
-		ExpDate = ExpDate_List[i]["ExpDate"]
-		spDate = ExpDate.split("/")
-		thisDate = [int(spDate[0]), int(spDate[1]), int(spDate[2])]
-		ExpTP = ExpDate_List[i]["Timepoint"]
-		WriteConsoleMsg("INFO", "開始進行實驗數據距離時間計算...(實驗編號：%s 實驗日期：%s 時間點：%s)" %(ExpNo, ExpDate, ExpTP))
-
-		sql_query = "SELECT \"serial_data_id\", \"latency\" FROM \"VIEW_TBI_ExpDetail_Data\" WHERE \"ExpDate\" = \"{0}\" AND \"timepoints\" = \"{1}\" AND \"serial_data_id\" LIKE \"{2}%\"".format(ExpDate, ExpTP, ExpNo)
-		cursor = SQL_CONN.execute(sql_query)
-		result = cursor.fetchall()
-		totalCount = len(result)
-		SuccessCount = 0
-		for row in result:
-			print(row[0])
-			try:
-				EDCIP.Route2_1Min_Img(thisDate, row[0], row[1]) #總距離 分別距離 分別時間 [CTN = Central Target Normal]
-				SuccessCount = SuccessCount + 1
-			except:
-				WriteConsoleMsg("NOTICE", "更新 實驗數據編號%s 距離時間計算時發生問題!!" %(row[0]))
-
-		if SuccessCount != 0:
-			WriteConsoleMsg("GOOD", "更新實驗數據距離時間計算成功，共%d筆資料(實驗編號：%s 實驗日期：%s 時間點：%s)" %(SuccessCount, ExpNo, ExpDate, ExpTP))
-		else:
-			WriteConsoleMsg("NOTICE", "更新實驗數據距離時間計算失敗，成功%d/%d筆資料(實驗編號：%s 實驗日期：%s 時間點：%s)" %(SuccessCount, totalCount, ExpNo, ExpDate, ExpTP))
-
 def ChangeIMGViewSize():
 	global IMG_VIEW_COUNT, IMG_NOW_Combo, IMG_Page_STATE, IMG_FOLDER, IMG_PAGE_CHANGE
 
@@ -1840,8 +1722,6 @@ def WindowsView():
 	TK_BT_LoadExpCSV = tk.Button(tkWin, text='匯入資料', font=('微軟正黑體', 10), state="disabled", command=LoadCSV_ExperimentData)
 	TK_BT_LoadExpCSV.place(x=220,y=M1Y-2,anchor="nw")
 
-	tk.Button(tkWin, text='更新全部\n距離速率', width=7, font=('微軟正黑體', 10), command=CalculateDistance).place(x=295,y=M1Y,anchor="nw")
-
 	# 實驗數據匯入區
 	M2Y = 70
 	tk.Label(tkWin, text="匯入路徑軌跡數據(IMG/CSV)", font=('微軟正黑體', 11), bg="gray75").place(x=10,y=M2Y,anchor="nw")
@@ -1853,71 +1733,71 @@ def WindowsView():
 	TK_BT_LoadPathData = tk.Button(tkWin, text='匯入資料', font=('微軟正黑體', 10), state="disabled", command=LoadPath_ExpData_CSV_IMG)
 	TK_BT_LoadPathData.place(x=290,y=M2Y-2,anchor="nw")
 
-	# 實驗總數顯示區
-	M3X = 370
-	M3Y = 12
-	TK_BT_ShowQuantity = tk.Button(tkWin, text='TBI 各組總數', font=('微軟正黑體', 10), bg="gray75", width=10, relief="flat", command=chooseQuantityType)
-	TK_BT_ShowQuantity.place(x=M3X+1,y=M3Y-2,anchor="nw")
+	# # 實驗總數顯示區
+	# M3X = 370
+	# M3Y = 12
+	# TK_BT_ShowQuantity = tk.Button(tkWin, text='TBI 各組總數', font=('微軟正黑體', 10), bg="gray75", width=10, relief="flat", command=chooseQuantityType)
+	# TK_BT_ShowQuantity.place(x=M3X+1,y=M3Y-2,anchor="nw")
 	
-	M3X_1 = M3X+95
-	M3Y_1 = M3Y-2
-	SHOW_TP_List = ['Pre', 'D07', 'D14', 'D28', 'M03', 'M06', 'M09']
-	TP_Color = {
-		"Pre": "SteelBlue", 
-		"D07": "SkyBlue1", "D14": "SkyBlue2", "D28": "SkyBlue3", 
-		"M03": "DeepSkyBlue1", "M06": "DeepSkyBlue2", "M09": "DeepSkyBlue3"
-	}
-	for i in range(len(SHOW_TP_List)):
-		newTBI_Title_Frame = tk.Frame(tkWin, width=54, height=30, bg=TP_Color[SHOW_TP_List[i]])
-		newTBI_Title_Frame.place(x=M3X_1 + 56*i,y=M3Y_1,anchor="nw")
-		tk.Label(newTBI_Title_Frame, text=SHOW_TP_List[i], font=('微軟正黑體', 11), bg=TP_Color[SHOW_TP_List[i]]).place(x=27,y=2,anchor="n")
+	# M3X_1 = M3X+95
+	# M3Y_1 = M3Y-2
+	# SHOW_TP_List = ['Pre', 'D07', 'D14', 'D28', 'M03', 'M06', 'M09']
+	# TP_Color = {
+	# 	"Pre": "SteelBlue", 
+	# 	"D07": "SkyBlue1", "D14": "SkyBlue2", "D28": "SkyBlue3", 
+	# 	"M03": "DeepSkyBlue1", "M06": "DeepSkyBlue2", "M09": "DeepSkyBlue3"
+	# }
+	# for i in range(len(SHOW_TP_List)):
+	# 	newTBI_Title_Frame = tk.Frame(tkWin, width=54, height=30, bg=TP_Color[SHOW_TP_List[i]])
+	# 	newTBI_Title_Frame.place(x=M3X_1 + 56*i,y=M3Y_1,anchor="nw")
+	# 	tk.Label(newTBI_Title_Frame, text=SHOW_TP_List[i], font=('微軟正黑體', 11), bg=TP_Color[SHOW_TP_List[i]]).place(x=27,y=2,anchor="n")
 
-	M3X_2 = M3X
-	M3Y_2 = M3Y+30
-	SHOW_TBI_Group_List = ['Sham+NS', 'Sham+MSC', 'rTBI+NS', 'rTBI+MSC']
-	for i in range(len(SHOW_TBI_Group_List)):
-		newTBI_Group_Frame = tk.Frame(tkWin, width=90, height=24, bg="SkyBlue1")
-		newTBI_Group_Frame.place(x=M3X_2, y=M3Y_2 + 26*i, anchor="nw")
-		tk.Label(newTBI_Group_Frame, text=SHOW_TBI_Group_List[i], font=('微軟正黑體', 10), bg="SkyBlue1").place(x=45,y=1,anchor="n")
-		for j in range(1,len(SHOW_TP_List)):
-			newTBI_Data_Frame = tk.Frame(tkWin, width=54, height=24, bg="gray85")
-			newTBI_Data_Frame.place(x=M3X_2 + 95 + 56*j, y=M3Y_2 + 26*i, anchor="nw")
-			tk.Label(newTBI_Data_Frame, textvariable=TBI_QUANTITY_DATA[i][j], font=('微軟正黑體', 10), bg="gray85").place(x=27,y=1,anchor="n")
-	newTBI_Data_Frame = tk.Frame(tkWin, width=54, height=26*4 - 2, bg="gray85")
-	newTBI_Data_Frame.place(x=M3X_2 + 95, y=M3Y_2, anchor="nw")
-	tk.Label(newTBI_Data_Frame, textvariable=TBI_QUANTITY_DATA[0][0], font=('微軟正黑體', 10), bg="gray85").place(x=27,y=(26*4-2)/2-10,anchor="n")
+	# M3X_2 = M3X
+	# M3Y_2 = M3Y+30
+	# SHOW_TBI_Group_List = ['Sham+NS', 'Sham+MSC', 'rTBI+NS', 'rTBI+MSC']
+	# for i in range(len(SHOW_TBI_Group_List)):
+	# 	newTBI_Group_Frame = tk.Frame(tkWin, width=90, height=24, bg="SkyBlue1")
+	# 	newTBI_Group_Frame.place(x=M3X_2, y=M3Y_2 + 26*i, anchor="nw")
+	# 	tk.Label(newTBI_Group_Frame, text=SHOW_TBI_Group_List[i], font=('微軟正黑體', 10), bg="SkyBlue1").place(x=45,y=1,anchor="n")
+	# 	for j in range(1,len(SHOW_TP_List)):
+	# 		newTBI_Data_Frame = tk.Frame(tkWin, width=54, height=24, bg="gray85")
+	# 		newTBI_Data_Frame.place(x=M3X_2 + 95 + 56*j, y=M3Y_2 + 26*i, anchor="nw")
+	# 		tk.Label(newTBI_Data_Frame, textvariable=TBI_QUANTITY_DATA[i][j], font=('微軟正黑體', 10), bg="gray85").place(x=27,y=1,anchor="n")
+	# newTBI_Data_Frame = tk.Frame(tkWin, width=54, height=26*4 - 2, bg="gray85")
+	# newTBI_Data_Frame.place(x=M3X_2 + 95, y=M3Y_2, anchor="nw")
+	# tk.Label(newTBI_Data_Frame, textvariable=TBI_QUANTITY_DATA[0][0], font=('微軟正黑體', 10), bg="gray85").place(x=27,y=(26*4-2)/2-10,anchor="n")
 
-	M3X_3 = M3X+95
-	M3Y_3 = M3Y+135
-	for i in range(len(TBI_QUANTITY_TP_TOTAL)):
-		newTBI_Total_Frame = tk.Frame(tkWin, width=54, height=24, bg="SkyBlue2")
-		newTBI_Total_Frame.place(x=M3X_3 + 56*i, y=M3Y_3, anchor="nw")
-		tk.Label(newTBI_Total_Frame, textvariable=TBI_QUANTITY_TP_TOTAL[i], font=('微軟正黑體', 10, 'bold'), bg="SkyBlue2").place(x=27,y=0,anchor="n")
+	# M3X_3 = M3X+95
+	# M3Y_3 = M3Y+135
+	# for i in range(len(TBI_QUANTITY_TP_TOTAL)):
+	# 	newTBI_Total_Frame = tk.Frame(tkWin, width=54, height=24, bg="SkyBlue2")
+	# 	newTBI_Total_Frame.place(x=M3X_3 + 56*i, y=M3Y_3, anchor="nw")
+	# 	tk.Label(newTBI_Total_Frame, textvariable=TBI_QUANTITY_TP_TOTAL[i], font=('微軟正黑體', 10, 'bold'), bg="SkyBlue2").place(x=27,y=0,anchor="n")
 	
-	M3X_4 = M3X+487
-	M3Y_4 = M3Y+30
-	for i in range(len(TBI_QUANTITY_Group_TOTAL)):
-		newTBI_Group_Total_Frame = tk.Frame(tkWin, width=82, height=24, bg="DeepSkyBlue1")
-		newTBI_Group_Total_Frame.place(x=M3X_4, y=M3Y_4 + 26*i, anchor="nw")
-		tk.Label(newTBI_Group_Total_Frame, textvariable=TBI_QUANTITY_Group_TOTAL[i], font=('微軟正黑體', 10, 'bold'), bg="DeepSkyBlue1").place(x=41, y=1, anchor="n")
+	# M3X_4 = M3X+487
+	# M3Y_4 = M3Y+30
+	# for i in range(len(TBI_QUANTITY_Group_TOTAL)):
+	# 	newTBI_Group_Total_Frame = tk.Frame(tkWin, width=82, height=24, bg="DeepSkyBlue1")
+	# 	newTBI_Group_Total_Frame.place(x=M3X_4, y=M3Y_4 + 26*i, anchor="nw")
+	# 	tk.Label(newTBI_Group_Total_Frame, textvariable=TBI_QUANTITY_Group_TOTAL[i], font=('微軟正黑體', 10, 'bold'), bg="DeepSkyBlue1").place(x=41, y=1, anchor="n")
 
-	M3X_5 = M3X+487
-	M3Y_5 = M3Y-2
-	newTBI_Group_Total_Label = tk.Frame(tkWin, width=82, height=30, bg="DeepSkyBlue1")
-	newTBI_Group_Total_Label.place(x=M3X_5,y=M3Y_5,anchor="nw")
-	tk.Label(newTBI_Group_Total_Label, text="Total(術後)", font=('微軟正黑體', 10, 'bold'), bg="DeepSkyBlue1").place(x=41, y=3, anchor="n")
+	# M3X_5 = M3X+487
+	# M3Y_5 = M3Y-2
+	# newTBI_Group_Total_Label = tk.Frame(tkWin, width=82, height=30, bg="DeepSkyBlue1")
+	# newTBI_Group_Total_Label.place(x=M3X_5,y=M3Y_5,anchor="nw")
+	# tk.Label(newTBI_Group_Total_Label, text="Total(術後)", font=('微軟正黑體', 10, 'bold'), bg="DeepSkyBlue1").place(x=41, y=3, anchor="n")
 	
-	M3X_6 = M3X
-	M3Y_6 = M3Y+135
-	newTBI_TP_Total_Label = tk.Frame(tkWin, width=90, height=24, bg="SkyBlue2")
-	newTBI_TP_Total_Label.place(x=M3X_6,y=M3Y_6,anchor="nw")
-	tk.Label(newTBI_TP_Total_Label, text="Total(整體)", font=('微軟正黑體', 10, "bold"), bg="SkyBlue2").place(x=45,y=1,anchor="n")
+	# M3X_6 = M3X
+	# M3Y_6 = M3Y+135
+	# newTBI_TP_Total_Label = tk.Frame(tkWin, width=90, height=24, bg="SkyBlue2")
+	# newTBI_TP_Total_Label.place(x=M3X_6,y=M3Y_6,anchor="nw")
+	# tk.Label(newTBI_TP_Total_Label, text="Total(整體)", font=('微軟正黑體', 10, "bold"), bg="SkyBlue2").place(x=45,y=1,anchor="n")
 
-	M3X_7 = M3X+487
-	M3Y_7 = M3Y+135
-	newTBI_TP_Total_Total = tk.Frame(tkWin, width=82, height=24, bg="SkyBlue1")
-	newTBI_TP_Total_Total.place(x=M3X_7,y=M3Y_7,anchor="nw")
-	tk.Label(newTBI_TP_Total_Total, textvariable=TBI_QUANTITY_TOTAL_TOTAL, font=('微軟正黑體', 11, 'bold'), bg="SkyBlue1").place(x=41,y=0,anchor="n")
+	# M3X_7 = M3X+487
+	# M3Y_7 = M3Y+135
+	# newTBI_TP_Total_Total = tk.Frame(tkWin, width=82, height=24, bg="SkyBlue1")
+	# newTBI_TP_Total_Total.place(x=M3X_7,y=M3Y_7,anchor="nw")
+	# tk.Label(newTBI_TP_Total_Total, textvariable=TBI_QUANTITY_TOTAL_TOTAL, font=('微軟正黑體', 11, 'bold'), bg="SkyBlue1").place(x=41,y=0,anchor="n")
 
 	# 實驗天數資料顯示區
 	M4X = 10
@@ -1951,23 +1831,18 @@ def WindowsView():
 			CAL_ExpDate_Label[i][j][2].place(x=M4X_CP+5+70*j,y=M4Y_CP+67+100*i,anchor="nw")
 
 	# Console
-	M5X = 10
-	M5Y = 690
+	M5X = 370
+	M5Y = 560
 	testConsoleText = "[2020-11-20 10:50:23] 20201006(07D).csv 資料匯入(TBI Model - 00M07D)，成功 13 筆， 失敗 0 筆，共 13 筆資料"
-	TK_Console = tk.Frame(tkWin, width=1250, height=82, bg="black")
+	TK_Console = tk.Frame(tkWin, width=900, height=122, bg="black")
 	TK_Console.place(x=M5X,y=M5Y,anchor="nw")
-	TK_Console_Line[0] = tk.Label(TK_Console, text="", font=('微軟正黑體', 10, 'bold'), bg="black", fg=CONSOLE_COLOR["NULL"])
-	TK_Console_Line[0].place(x=2,y=2,anchor="nw")
-	TK_Console_Line[1] = tk.Label(TK_Console, text="", font=('微軟正黑體', 10, 'bold'), bg="black", fg=CONSOLE_COLOR["NULL"])
-	TK_Console_Line[1].place(x=2,y=21,anchor="nw")
-	TK_Console_Line[2] = tk.Label(TK_Console, text="", font=('微軟正黑體', 10, 'bold'), bg="black", fg=CONSOLE_COLOR["NULL"])
-	TK_Console_Line[2].place(x=2,y=40,anchor="nw")
-	TK_Console_Line[3] = tk.Label(TK_Console, text="", font=('微軟正黑體', 10, 'bold'), bg="black", fg=CONSOLE_COLOR["NULL"])
-	TK_Console_Line[3].place(x=2,y=59,anchor="nw")
+	for i in range(len(TK_Console_Line)):
+		TK_Console_Line[i] = tk.Label(TK_Console, text="123", font=('微軟正黑體', 10, 'bold'), bg="black", fg=CONSOLE_COLOR["NULL"])
+		TK_Console_Line[i].place(x=2,y=2+19*i,anchor="nw")
 
 	# 刪除實驗數據區
 	M6X = 370
-	M6Y = 175
+	M6Y = 50
 	tk.Label(tkWin, text="刪除實驗數據", font=('微軟正黑體', 11), bg="gray75").place(x=M6X,y=M6Y,anchor="nw")
 	tk.Label(tkWin, text="實驗日期", font=('微軟正黑體', 11)).place(x=M6X+100,y=M6Y,anchor="nw")
 	DEL_Cal = DateEntry(tkWin, width=10, background='gray', dateformat=4, font=('微軟正黑體', 10, "bold"), foreground='white', borderwidth=2, state="readonly")
@@ -1982,7 +1857,7 @@ def WindowsView():
 
 	# 實驗數據展示區
 	M7X = 370
-	M7Y = 210
+	M7Y = 85
 	tk.Label(tkWin, text="實驗數據詳細資料(TBI)", font=('微軟正黑體', 11), bg="gray75").place(x=M7X,y=M7Y,anchor="nw")
 	M7TB_X = M7X
 	M7TB_Y = M7Y + 48
@@ -2045,19 +1920,19 @@ def WindowsView():
 	tk.Label(tkWin, text=TB_command, font=('微軟正黑體', 8)).place(x=M7TB_X,y=M7TB_Y+402,anchor="nw")
 	
 	# 路徑結果圖顯示區
-	M20X = 950
-	M20Y = 10
+	M20X = 370
+	M20Y = 15
 	tk.Label(tkWin, text="路徑結果圖顯示區", font=('微軟正黑體', 11), bg="gray75").place(x=M20X,y=M20Y,anchor="nw")
 	IMG_TP = ['請選擇時間點', '手術前', '手術後7天', '手術後14天', '手術後28天', '手術後3個月', '手術後6個月', '手術後9個月']
 	IMG_TBI_G = ['請選擇組別', 'Sham', 'Sham+NS', 'Sham+MSC', 'rTBI+NS', 'rTBI+MSC']
 	IMG_TP_Combo = ttk.Combobox(tkWin, width=10, values=IMG_TP, font=('微軟正黑體', 10), state="readonly")
-	IMG_TP_Combo.place(x=M20X,y=M20Y+34,anchor="nw")
+	IMG_TP_Combo.place(x=M20X+280,y=M20Y,anchor="nw")
 	IMG_TP_Combo.current(0)
 	IMG_TBIG_Combo = ttk.Combobox(tkWin, width=10, values=IMG_TBI_G, font=('微軟正黑體', 10), state="readonly")
-	IMG_TBIG_Combo.place(x=M20X+110,y=M20Y+34,anchor="nw")
+	IMG_TBIG_Combo.place(x=M20X+110+280,y=M20Y,anchor="nw")
 	IMG_TBIG_Combo.current(0)
 	IMG_BT_OpenIMG = tk.Button(tkWin, text='開啟圖片', font=('微軟正黑體', 10), command=setImgPathWindows, state="disabled")
-	IMG_BT_OpenIMG.place(x=M20X+220,y=M20Y+29,anchor="nw")
+	IMG_BT_OpenIMG.place(x=M20X+220+280,y=M20Y-5,anchor="nw")
 	
 	IMG_L_BT_Page = tk.Button(tkWin, text='◀', font=('微軟正黑體', 10), width=2, command=lambda: MoveUpDownImgPath('Up'), state="disabled")
 	IMG_L_BT_Page.place(x=M20X+130,y=M20Y-4,anchor="nw") #158
@@ -2066,14 +1941,14 @@ def WindowsView():
 	IMG_Page_Label = tk.Label(tkWin, text="無資料", font=('微軟正黑體', 10))
 	IMG_Page_Label.place(x=M20X+158+42,y=M20Y,anchor="n")
 
-	tk.Button(tkWin, text='更新全部\n一分色違', width=7, font=('微軟正黑體', 10), command=Draw_1_Min_Img).place(x=M20X,y=M20Y+60,anchor="nw")
-	tk.Button(tkWin, text='更新全部\n究極色違', width=7, font=('微軟正黑體', 10), command=Draw_Colorful_Img).place(x=M20X+80,y=M20Y+60,anchor="nw")
-	tk.Button(tkWin, text='更新全部\n究極進化', width=7, font=('微軟正黑體', 10), command=Draw_Segment_Img).place(x=M20X+160,y=M20Y+60,anchor="nw")
-	tk.Button(tkWin, text='更換圖片\n顯示模式', width=7, font=('微軟正黑體', 10), command=ChangeIMGViewSize).place(x=M20X+240,y=M20Y+60,anchor="nw")
-	
-	tk.Button(tkWin, text='匯出目前\n所選圖片', width=7, font=('微軟正黑體', 10), command=ExportImg).place(x=M20X,y=M20Y+110,anchor="nw")
-	tk.Button(tkWin, text='匯出目前\n所選CSV', width=7, font=('微軟正黑體', 10), command=ExportImg).place(x=M20X+80,y=M20Y+110,anchor="nw")
-	# tk.Button(tkWin, text='試色', width=7, font=('微軟正黑體', 10), command=EDCIP.testingColor).place(x=M20X+160,y=M20Y+60,anchor="nw")
+	# 眾多按鈕區
+	M21X = 950
+	M21Y = 10
+	tk.Button(tkWin, text='更新全部\n距離速率', width=7, font=('微軟正黑體', 10), command=CalculateDistance).place(x=M21X,y=M21Y,anchor="nw")
+	tk.Button(tkWin, text='匯出目前\n所選圖片', width=7, font=('微軟正黑體', 10), command=ExportImg).place(x=M21X+80,y=M21Y,anchor="nw")
+	tk.Button(tkWin, text='匯出目前\n所選CSV', width=7, font=('微軟正黑體', 10), command=ExportImg).place(x=M21X+160,y=M21Y,anchor="nw")
+	# tk.Button(tkWin, text='更換圖片\n顯示模式', width=7, font=('微軟正黑體', 10), command=ChangeIMGViewSize).place(x=M21X+240,y=M21Y,anchor="nw")
+	# tk.Button(tkWin, text='試色', width=7, font=('微軟正黑體', 10), command=EDCIP.testingColor).place(x=M21X,y=M21Y+50,anchor="nw")
 
 	tkWin.protocol("WM_DELETE_WINDOW", Main_WindowsClosing)
 	updateTBI_Quantity(TBI_QUANTITY_DATA_TYPE)
