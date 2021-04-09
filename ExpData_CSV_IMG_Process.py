@@ -738,12 +738,15 @@ def RouteProcess(ExpDate, ExpRatDataNo, ExpLatency): #實驗日期[年, 月, 日
 		else:
 			CATE_DIS_CM["Central"] = CATE_DIS_CM["Central"] + pixelDis
 			CATE_TIME_SEC["Central"] = CATE_TIME_SEC["Central"] + 0.05
-		# ArmImage = np.vstack([drawArmsImage(RoutePath[i-1]), drawDashboard(int(i/20))])
-		# cv2.imshow("ArmImage", ArmImage)
-		# cv2.waitKey(1)
+	totCSVTime = CATE_TIME_SEC["Target"] + CATE_TIME_SEC["Normal"] + CATE_TIME_SEC["Central"]
+	rate = ExpLatency / totCSVTime
+	CATE_TIME_SEC["Target"] = CATE_TIME_SEC["Target"] * rate
+	CATE_TIME_SEC["Normal"] = CATE_TIME_SEC["Normal"] * rate
+	CATE_TIME_SEC["Central"] = CATE_TIME_SEC["Central"] * rate
 	# print(totDistance)
 	# print(CATE_DIS_CM)
 	# print(CATE_TIME_SEC)
+
 	return totDistance, CATE_DIS_CM, CATE_TIME_SEC
 
 if __name__ == '__main__':
