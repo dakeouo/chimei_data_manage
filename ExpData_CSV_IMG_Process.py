@@ -9,7 +9,7 @@ import shutil
 SourceFolder = "" #來原資料夾
 DestinationFolder = './SQL_FILE' #目的資料夾
 
-CURRENT_MODEL_NAME = "TBI"
+CURRENT_MODEL_NAME = ""
 
 ARM_UNIT = 8
 Pixel2CM_Convert = 170/480
@@ -259,7 +259,7 @@ def drawDashboard(nowTime=0):
 	return DashImage
 
 def showMultiImgPath(Img_PathID, ImgInfo_List=None, ImgFolder="IMG"):
-	global DestinationFolder
+	global DestinationFolder, CURRENT_MODEL_NAME
 	global IMG_PATH_WINDOWS_IS_OPEN
 
 	IMG_PATH_WINDOWS_IS_OPEN = True
@@ -318,7 +318,7 @@ def showMultiImgPath(Img_PathID, ImgInfo_List=None, ImgFolder="IMG"):
 	CTY = 27
 	if ImgInfo_List != None:
 		cv2.putText(newImgTitle, "Model:", (10,CTY), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255,255,255), 1, cv2.LINE_AA)
-		cv2.putText(newImgTitle, "TBI", (85,CTY), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,255,255), 1, cv2.LINE_AA)
+		cv2.putText(newImgTitle, CURRENT_MODEL_NAME, (85,CTY), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,255,255), 1, cv2.LINE_AA)
 		cv2.putText(newImgTitle, "Timepoint:", (230,CTY), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255,255,255), 1, cv2.LINE_AA)
 		cv2.putText(newImgTitle, str(ImgInfo_List[0]), (350,CTY), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,255,255), 1, cv2.LINE_AA)
 		cv2.putText(newImgTitle, "Groups:", (470,CTY), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255,255,255), 1, cv2.LINE_AA)

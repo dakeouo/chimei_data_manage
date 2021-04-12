@@ -14,6 +14,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import ExpData_CSV_IMG_Process as EDCIP
+import ExpData_Parameter_Config as EDPC
 
 # SQL 語句命令
 # INSERT INTO table_name(field1,field2,...,fieldn) VALUES(val1,val2,...,valn)   
@@ -25,7 +26,6 @@ import ExpData_CSV_IMG_Process as EDCIP
 
 # tkinter 視窗元件變數
 NOW_TIME = datetime.datetime.now()
-SYSTEM_NAME = "實驗大鼠八臂迷宮數據管理系統(TBI 專用)"
 TIMES_COUNT = 0
 TK_BT_SetExpCSV = ""
 TK_BT_LoadExpCSV = ""
@@ -38,8 +38,11 @@ TKE_Command = ""
 DEL_Cal = ""
 TK_BT_DEL_ExpData = ""
 TK_BT_EXP_HAVE_PATH = ""
+FilterData_Group = ""
+Filter_GroupCombo = ""
 
-EDCIP.CURRENT_MODEL_NAME = "TBI"
+EDCIP.CURRENT_MODEL_NAME = EDPC.CURRENT_MODEL_LIST[EDPC.CURRENT_MODEL_ID]
+SYSTEM_NAME = "實驗大鼠八臂迷宮數據管理系統(Model: %s)" %(EDCIP.CURRENT_MODEL_NAME)
 
 tkWin = tk.Tk()
 tkWin.title(SYSTEM_NAME) #窗口名字
@@ -52,6 +55,7 @@ WIN_CLOSE_LoadPath = False
 IS_SET_ExpData_File = False
 IS_SET_PathData_Path = False
 ExpData_CSV_Confirm = ""
+ChangeModel_Label = ""
 LoadCSV = ""
 FilterData = ""
 LoadPath = ""
@@ -97,7 +101,7 @@ EXPTABLE_SQL_DATA_SUM = 0
 EXPTABLE_SQL_DATA_PAGE = 1
 EXPTABLE_SQL_DATA_RESULT = []
 EXPTABLE_SQL_DATA_MAXITEM = 15
-EXPTABLE_SQL_Query = "SELECT * FROM \"VIEW_TBI_ExpDetail_Data\" WHERE 1"
+EXPTABLE_SQL_Query = "SELECT * FROM \"VIEW_TOTAL_ExpDetail_Data\" WHERE \"Models\" = \"%s\" " %(EDCIP.CURRENT_MODEL_NAME)
 EXPTABLE_Data_Label = []
 EXPTABLE_Filter_BT = []
 EXPTABLE_Route_BT = []
@@ -122,7 +126,7 @@ IMG_R_BT_Page = ""
 IMG_Page_STATE = 1
 IMG_Page_TOTAL = 1
 IMG_ExpID_List = []
-IMG_Query = "SELECT \"serial_data_id\" FROM \"VIEW_TBI_ExpDetail_Data\" WHERE 0"
+IMG_Query = "SELECT \"serial_data_id\" FROM \"VIEW_TOTAL_ExpDetail_Data\" WHERE \"Models\" = \"%s\"" %(EDCIP.CURRENT_MODEL_NAME)
 IMG_VIEW_IS_OPEN = False
 IMG_VIEW_COUNT = 8
 # IMG_FOLDER = "IMG_colorful"
@@ -133,7 +137,7 @@ IMG_FOLDER = "IMG"
 def BT_None():
 	pass
 
-def WriteConsoleMsg(level, msg):
+def WriteConsoleMsg(level, msg): #狀態列(Console)區域之訊息文字顯示處理
 	global CONSOLE_FLAG, CONSOLE_COLOR, CONSOLE_MSG, TK_Console_Line
 	CONSOLE_MSG[CONSOLE_FLAG][0] = CONSOLE_COLOR[level]
 	CONSOLE_MSG[CONSOLE_FLAG][1] = "[%s] %s" %(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") ,msg)
@@ -143,7 +147,7 @@ def WriteConsoleMsg(level, msg):
 		TK_Console_Line[len(TK_Console_Line)-i-1].config(text=CONSOLE_MSG[MsgID][1], fg=CONSOLE_MSG[MsgID][0])
 		MsgID = CONSOLE_MSG[MsgID][2]
 
-def SystemInit():
+def SystemInit(): #系統初始化
 	global TBI_QUANTITY_DATA, TBI_QUANTITY_Group_TOTAL, TBI_QUANTITY_TP_TOTAL, TBI_QUANTITY_TOTAL_TOTAL
 	global CAL_DATE_NUM#, CAL_ExpDate_Label
 	global EXPTABLE_Data_Label, EXPTABLE_Filter_BT, EXPTABLE_Route_BT, EXPTABLE_SortData_BT
@@ -187,7 +191,6 @@ def SystemInit():
 		EXPTABLE_Filter_BT.append("")
 		EXPTABLE_Route_BT.append("")
 
-
 def writeData2CSV(fileName, type_, dataRow): #寫入CSV檔
 	with open(fileName, type_, newline='') as csvfile:
 		# 建立 CSV 檔寫入器
@@ -207,11 +210,11 @@ def readCSV2List(fileName): #讀取CSV檔
 
 	return AllData
 
-def string2Second(string):
+def string2Second(string): #將文字轉成秒數
 	newStr1 = string.split(":")
 	return int(newStr1[0])*3600 + int(newStr1[1])*60 + int(newStr1[2])
 
-def string2RouteList(string):
+def string2RouteList(string): #將文字轉成座標
 	newStr1 = string.split("[")
 	newStr2 = newStr1[1].split("]")
 	newStr3 = newStr2[0].split(", ")
@@ -237,7 +240,7 @@ def SQL_SaveExpDate(exp_no, exp_date, model, timepoint, PathState): #儲存實�
 		return 0 #資料庫內已有這筆資料
 	return 1 #新增沒問題
 
-def findSameIdDiffGroup(model, groups, Serial_data_id):
+def findSameIdDiffGroup(model, groups, Serial_data_id): #找出是否有新增過這筆資料
 	#Group ID 轉換
 	sql_query = "SELECT \"group_id\" FROM \"model_group\" WHERE \"model\" = \"%s\" AND \"groups\" = \"%s\"" %(model, groups)
 	cursor = SQL_CONN.execute(sql_query)
@@ -343,18 +346,8 @@ def InsertExpData2DB(exp_date, model, timepoint, csv_filepath, csv_filename, Pat
 	for row in csv_original_data[1:]:
 		ratGroup, ratId, longTerm, shortTerm, Latency = row[0], row[1], int(row[3]), int(row[4]), row[6]
 		print(ratGroup, ratId, longTerm, shortTerm, Latency)
-		if timepoint == "pre" and model == "TBI":
-			ratGroup = "Sham"
-		elif timepoint != "pre" and (model == "TBI" and ratGroup == "Sham"):
-			ratGroup = "Sham+NS"
-		elif (model == "TBI" and ratGroup == "sham+NS"):
-			ratGroup = "Sham+NS"
-		elif (model == "TBI" and ratGroup == "sham+MSC"):
-			ratGroup = "Sham+MSC"
-		elif (model == "TBI" and ratGroup == "TBI+NS") or (model == "TBI" and ratGroup == "Control"):
-			ratGroup = "rTBI+NS"
-		elif (model == "TBI" and ratGroup == "TBI+MSC"):
-			ratGroup = "rTBI+MSC" 
+		EDPC.ModelGroupCheck(model)
+		
 		Latency = string2Second(row[6])
 		print(ratGroup, ratId, longTerm, shortTerm, Latency)
 		route = string2RouteList(row[5])
@@ -481,6 +474,8 @@ def LoadPath_ExpData_CSV_IMG():
 			expDate = File_Cal.get()
 			sp_expdate = expDate.split("/")
 			newDate = [0, 0, 0]
+
+
 			if len(sp_expdate[0]) == 4:
 				newExpDate = "%04d/%02d/%02d" %(int(sp_expdate[0]), int(sp_expdate[1]), int(sp_expdate[2]))
 				newDate = [int(sp_expdate[0]), int(sp_expdate[1]), int(sp_expdate[2])]
@@ -493,8 +488,8 @@ def LoadPath_ExpData_CSV_IMG():
 			Default_Info = [newDate, Default_Info[1][:5].upper()]
 			if TimepointCombo.current() != 0:
 				# print(Default_Info)
-				sql_query = "SELECT \"ExpNo\", \"Total\" FROM \"VIEW_Experiment_Overview_%s\" WHERE \"ExpDate\" = \"%s\" AND \"Timepoint\" = \"%s\" AND \"Model\" = \"%s\"" %(
-					Default_Info[1], newExpDate, covertTimepoint[TimepointCombo.get()], Default_Info[1]
+				sql_query = "SELECT \"ExpNo\", \"Total\" FROM \"VIEW_TOTAL_Experiment_Overview\" WHERE \"ExpDate\" = \"%s\" AND \"Timepoint\" = \"%s\" AND \"Models\" = \"%s\"" %(
+					newExpDate, covertTimepoint[TimepointCombo.get()], Default_Info[1]
 				)
 				# print(sql_query)
 				try:
@@ -543,7 +538,10 @@ def LoadPath_ExpData_CSV_IMG():
 						WriteConsoleMsg("NOTICE", "查無 實驗編號%s 大鼠編號%s 數據資料!(%s)" %(ExpNo, ExpData_ID[i], ExpData_Type))
 					elif len(result) > 1:
 						print("有重複的ID：%s" %(ExpData_ID[i]))
-						sql_query = "SELECT \"serial_data_id\" FROM \"VIEW_TBI_ExpDetail_Data\" WHERE \"ExpDate\" = \"%s\" AND \"rat_id\" = \"%s\" AND \"groups\" = \"%s\"" %(ExpDate, ExpData_ID[i], ExpData_Group[i])
+						sql_query = "SELECT \"serial_data_id\" FROM \"VIEW_TOTAL_ExpDetail_Data\" WHERE \"Models\" = \"%s\" AND \"ExpDate\" = \"%s\" AND \"rat_id\" = \"%s\" AND \"groups\" = \"%s\"" %(
+							EDCIP.CURRENT_MODEL_NAME,
+							ExpDate, ExpData_ID[i], ExpData_Group[i]
+						)
 						print(sql_query)
 						cursor = SQL_CONN.execute(sql_query)
 						result = cursor.fetchall()
@@ -723,7 +721,7 @@ def LoadCSV_ExperimentData():
 		cal.place(x=85,y=L1Y+2,anchor="nw")
 
 		L2Y = 40
-		ModelList = ['請選擇...', 'TBI', 'Radiation']
+		ModelList = EDPC.ModelList
 		tk.Label(LoadCSV, text="疾病模型", font=('微軟正黑體', 12)).place(x=10,y=L2Y,anchor="nw")
 		ModelCombo = ttk.Combobox(LoadCSV, width=12, values=ModelList, font=('微軟正黑體', 10, "bold"), state="readonly")
 		ModelCombo.place(x=85,y=L2Y+2,anchor="nw")
@@ -855,7 +853,7 @@ def LoopMain(): #GUI介面迴圈
 	else:
 		TK_BT_LoadExpCSV.config(state="disabled")
 	if TIMES_COUNT % 50 == 0:
-		updateTBI_Quantity(TBI_QUANTITY_DATA_TYPE)
+		# updateTBI_Quantity(TBI_QUANTITY_DATA_TYPE)
 		updateTBI_ExpDateCal(CAL_CURRENT_M)
 		updateTBI_ExpDataTable(EXPTABLE_SQL_Query, EXPTABLE_SQL_DATA_PAGE, EXPTABLE_SQL_DATA_MAXITEM)
 		updateTBI_ExpImgPath(IMG_VIEW_IS_OPEN)
@@ -926,23 +924,23 @@ def updateTBI_ExpDataTable(sql_query, data_page, max_item):
 	EXPTABLE_PAGE_STATE.set("第%d頁/共%d頁" %(data_page, math.ceil(EXPTABLE_SQL_DATA_SUM/EXPTABLE_SQL_DATA_MAXITEM)))
 
 	for i in range(len(EXPTABLE_SQL_DATA_RESULT)):
-		for j in range(1,len(EXPTABLE_SQL_DATA_RESULT[i])-1):
+		for j in range(2,len(EXPTABLE_SQL_DATA_RESULT[i])-1):
 			if EXPTABLE_SQL_DATA_RESULT[i][j] != None:
-				if j >= 7 and j <= 9:
-					EXPTABLE_Data_Label[i][j-1].config(text="{0}%".format(round(EXPTABLE_SQL_DATA_RESULT[i][j]*100)))
+				if j >= 8 and j <= 10:
+					EXPTABLE_Data_Label[i][j-2].config(text="{0}%".format(round(EXPTABLE_SQL_DATA_RESULT[i][j]*100)))
 				else:
-					EXPTABLE_Data_Label[i][j-1].config(text=str(EXPTABLE_SQL_DATA_RESULT[i][j]))
+					EXPTABLE_Data_Label[i][j-2].config(text=str(EXPTABLE_SQL_DATA_RESULT[i][j]))
 			else:
-				EXPTABLE_Data_Label[i][j-1].config(text="NULL")
+				EXPTABLE_Data_Label[i][j-2].config(text="NULL")
 		EXPTABLE_Filter_BT[i].config(
-			text=BT_Filter_Text[EXPTABLE_SQL_DATA_RESULT[i][13]], 
-			bg=BT_Filter_Color[EXPTABLE_SQL_DATA_RESULT[i][13]], 
-			command=partial(ExpDataDetailSetFilter,EXPTABLE_SQL_DATA_RESULT[i][0], EXPTABLE_SQL_DATA_RESULT[i][13])
+			text=BT_Filter_Text[EXPTABLE_SQL_DATA_RESULT[i][14]], 
+			bg=BT_Filter_Color[EXPTABLE_SQL_DATA_RESULT[i][14]], 
+			command=partial(ExpDataDetailSetFilter,EXPTABLE_SQL_DATA_RESULT[i][0], EXPTABLE_SQL_DATA_RESULT[i][14])
 		)
 		# EXPTABLE_Route_BT[i].config(text="次數%02d" %(EXPTABLE_SQL_DATA_RESULT[i][13]), bg="gray70")
 
 def updateTBI_ExpDateCal(c_month):
-	global CAL_DATE_NUM, CAL_ExpDate_Label
+	global CAL_DATE_NUM, CAL_ExpDate_Label, EDCIP
 
 	# 相關參數重置
 	defaultColor = "gray85"
@@ -985,7 +983,10 @@ def updateTBI_ExpDateCal(c_month):
 	}
 	for i in range(31):
 		MonthExpList.append([])
-	sql_query = "SELECT \"ExpNo\",\"ExpDate\",\"Timepoint\",\"Total\",\"PathState\",\"CSV_Upload\",\"IMG_Upload\" FROM \"VIEW_Experiment_Overview_TBI\" WHERE \"ExpDate\" LIKE \"{0}/{1}/%\" ORDER BY \"ExpDate\", \"Timepoint\"".format(c_month[0],"%02d" %(c_month[1]))
+	sql_query = "SELECT \"ExpNo\",\"ExpDate\",\"Timepoint\",\"Total\",\"PathState\",\"CSV_Upload\",\"IMG_Upload\" FROM \"VIEW_TOTAL_Experiment_Overview\" WHERE \"Models\" = \"{2}\" AND \"ExpDate\" LIKE \"{0}/{1}/%\" ORDER BY \"ExpDate\", \"Timepoint\"".format(
+		c_month[0],"%02d" %(c_month[1]),
+		EDCIP.CURRENT_MODEL_NAME
+	)
 	cursor = SQL_CONN.execute(sql_query)
 	result = cursor.fetchall()
 	# print(result)
@@ -1041,6 +1042,7 @@ def updateTBI_ExpDateCal(c_month):
 def updateTBI_Quantity(Q_type): # Group: TBI+MSC, TBI+NS, Sham+MSC, Sham+NS
 	global SQL_CONN
 	global TBI_QUANTITY_DATA, TBI_QUANTITY_Group_TOTAL, TBI_QUANTITY_TP_TOTAL, TBI_QUANTITY_TOTAL_TOTAL
+	global EDCIP
 
 	# Quantity_item = []
 	Quantity_item = [
@@ -1053,9 +1055,9 @@ def updateTBI_Quantity(Q_type): # Group: TBI+MSC, TBI+NS, Sham+MSC, Sham+NS
 	tp_Sum = [0,0,0,0,0,0,0]
 	total_sum = 0
 	if Q_type == "All":
-		sql_query = "SELECT \"Pre(Total)\",\"D7(Total)\",\"D14(Total)\",\"D28(Total)\",\"M3(Total)\",\"M6(Total)\",\"M9(Total)\" FROM \"VIEW_TBI_Model_Total_Quantity\" WHERE 1 ORDER BY \"groups\""
+		sql_query = "SELECT \"Pre(Total)\",\"D7(Total)\",\"D14(Total)\",\"D28(Total)\",\"M3(Total)\",\"M6(Total)\",\"M9(Total)\" FROM \"VIEW_TOTAL_Model_Total_Quantity\" WHERE \"Models\" = \"%s\" ORDER BY \"groups\"" %(EDCIP.CURRENT_MODEL_NAME)
 	elif Q_type == "Filter":
-		sql_query = "SELECT \"Filter(Pre)\",\"Filter(D7)\",\"Filter(D14)\",\"Filter(D28)\",\"Filter(M3)\",\"Filter(M6)\",\"Filter(M9)\" FROM \"VIEW_TBI_Model_Total_Quantity\" WHERE 1 ORDER BY \"groups\""
+		sql_query = "SELECT \"Filter(Pre)\",\"Filter(D7)\",\"Filter(D14)\",\"Filter(D28)\",\"Filter(M3)\",\"Filter(M6)\",\"Filter(M9)\" FROM \"VIEW_TOTAL_Model_Total_Quantity\" WHERE \"Models\" = \"%s\" ORDER BY \"groups\"" %(EDCIP.CURRENT_MODEL_NAME)
 	cursor = SQL_CONN.execute(sql_query)
 	result = cursor.fetchall()
 	if len(result) != 0:
@@ -1082,12 +1084,14 @@ def updateTBI_ExpImgPath(isOpenView):
 	global SQL_CONN
 	global IMG_TP_Combo, IMG_TBIG_Combo, IMG_BT_OpenIMG, IMG_L_BT_Page, IMG_R_BT_Page, IMG_Query, IMG_NOW_Combo
 	global IMG_Page_STATE, IMG_Page_TOTAL, IMG_ExpID_List, IMG_PAGE_CHANGE, IMG_Page_Label, IMG_FOLDER, IMG_VIEW_COUNT
+	global EDCIP
 
 	covertTP = {'手術前':"Pre", '手術後7天':"D07", '手術後14天':"D14", '手術後28天':"D28", '手術後3個月':"M03", '手術後6個月':"M06", '手術後9個月':"M09"}
 	
 	if IMG_TP_Combo.current() != 0 and IMG_TBIG_Combo.current() != 0:
 		if (IMG_TP_Combo.current() != IMG_NOW_Combo[0]) or (IMG_TBIG_Combo.current() != IMG_NOW_Combo[1]):
-			IMG_Query = "SELECT \"serial_data_id\" FROM \"VIEW_TBI_ExpDetail_Data\" WHERE \"isFilter\" = 1 AND \"groups\" = \"%s\" AND \"timepoints\" = \"%s\" ORDER BY \"serial_data_id\" DESC" %(
+			IMG_Query = "SELECT \"serial_data_id\" FROM \"VIEW_TOTAL_ExpDetail_Data\" WHERE \"Models\" = \"%s\" AND \"isFilter\" = 1 AND \"groups\" = \"%s\" AND \"timepoints\" = \"%s\" ORDER BY \"serial_data_id\" DESC" %(
+				EDCIP.CURRENT_MODEL_NAME,
 				IMG_TBIG_Combo.get(), covertTP[IMG_TP_Combo.get()]
 			)
 			# print(IMG_Query)
@@ -1105,7 +1109,7 @@ def updateTBI_ExpImgPath(isOpenView):
 	else:
 		IMG_Page_TOTAL = 0
 		IMG_NOW_Combo = [IMG_TP_Combo.current(), IMG_TBIG_Combo.current()]
-		IMG_Query = "SELECT \"serial_data_id\" FROM \"VIEW_TBI_ExpDetail_Data\" WHERE 0"
+		IMG_Query = "SELECT \"serial_data_id\" FROM \"VIEW_TOTAL_ExpDetail_Data\" WHERE \"Models\" = \"%s\"" %(EDCIP.CURRENT_MODEL_NAME)
 
 	if IMG_PAGE_CHANGE:
 		newIMG_Query = ""
@@ -1158,10 +1162,10 @@ def chooseQuantityType():
 	global TK_BT_ShowQuantity, TBI_QUANTITY_DATA_TYPE
 	if TBI_QUANTITY_DATA_TYPE == "All":
 		TBI_QUANTITY_DATA_TYPE = "Filter"
-		TK_BT_ShowQuantity.config(text=" TBI 各組篩選 ", bg="PaleGreen")
+		TK_BT_ShowQuantity.config(text=" 各組篩選 ", bg="PaleGreen")
 	elif TBI_QUANTITY_DATA_TYPE == "Filter":
 		TBI_QUANTITY_DATA_TYPE = "All"
-		TK_BT_ShowQuantity.config(text=" TBI 各組總數 ", bg="gray75")
+		TK_BT_ShowQuantity.config(text=" 各組總數 ", bg="gray75")
 
 def MoveUpDownDataTable(up_down):
 	global ExpDataTB_L_State, ExpDataTB_R_State
@@ -1218,6 +1222,8 @@ def DeleteExpDate2DB(ExpDate_id):
 def DeleteExpData():
 	global SQL_CONN
 	global DEL_TimepointCombo, DEL_Cal
+	global EDCIP
+
 	expDate = DEL_Cal.get()
 	sp_expdate = expDate.split("/")
 	if len(sp_expdate[0]) == 4:
@@ -1230,7 +1236,7 @@ def DeleteExpData():
 	backTP = {"pre":'手術前', "00M07D":'手術後7天', "00M14D":'手術後14天', "00M28D":'手術後28天', "03M00D":'手術後3個月', "06M00D":'手術後6個月', "09M00D":'手術後9個月'}
 	nowTP = DEL_TimepointCombo.get()
 	if DEL_TimepointCombo.current() != 0:
-		sql_query = "SELECT \"ExpNo\", \"ExpDate\", \"Timepoint\", \"Total\" FROM \"VIEW_Experiment_Overview_TBI\" WHERE \"ExpDate\" = \"%s\" and \"Timepoint\" = \"%s\"" %(newExpDate, covertTP[nowTP])
+		sql_query = "SELECT \"ExpNo\", \"ExpDate\", \"Timepoint\", \"Total\" FROM \"VIEW_TOTAL_Experiment_Overview\" WHERE \"Models\" = \"%s\" AND \"ExpDate\" = \"%s\" and \"Timepoint\" = \"%s\"" %(EDCIP.CURRENT_MODEL_NAME, newExpDate, covertTP[nowTP])
 		cursor = SQL_CONN.execute(sql_query)
 		result = cursor.fetchall()
 		if len(result) == 0:
@@ -1275,9 +1281,8 @@ def SQLDataQuery2Table(query, page_num, total_item, SortBy): #SQL命令 第幾�
 	if SortBy[0] != -1:
 		query = query + " ORDER BY \"%s\" %s" %(sortCol[SortBy[0]], sortSide[SortBy[1]])
 
-	# SQL_Query = "SELECT * FROM \"VIEW_TBI_ExpDetail_Data\" WHERE 1"
 	# 取得總共有多少筆資料
-	# print(query)
+	# print("query", query)
 	cursor = SQL_CONN.execute(query)
 	result1 = cursor.fetchall()
 	resultTot = len(result1)
@@ -1320,11 +1325,16 @@ def setSortDataButton(sortBT_id):
 
 def FilterData2DBData(FD_Date=None, FD_Group=None, FD_Timepoint=None, FD_LME=None, FD_SME=None, FD_Latency=None):
 	global EXPTABLE_SQL_Query
+	global EDCIP
+
 	isHaveFilter = False
-	EXPTABLE_SQL_Query = "SELECT * FROM \"VIEW_TBI_ExpDetail_Data\" WHERE"
+	EXPTABLE_SQL_Query = "SELECT * FROM \"VIEW_TOTAL_ExpDetail_Data\" WHERE \"Models\" = \"%s\"" %(EDCIP.CURRENT_MODEL_NAME)
 	ExpDetail_Data_ColList = ['ExpDate', 'groups', 'timepoints', 'long_term', 'short_term', 'latency']
 	if FD_Date != None:
-		isHaveFilter = True
+		if isHaveFilter:
+			EXPTABLE_SQL_Query = EXPTABLE_SQL_Query + " AND"
+		else:
+			isHaveFilter = True
 		if FD_Date[0] != "%" and FD_Date[1] != "%" and FD_Date[2] != "%":
 			EXPTABLE_SQL_Query = EXPTABLE_SQL_Query + " \"%s\" = \"%s/%s/%s\"" %('ExpDate', FD_Date[0], FD_Date[1], FD_Date[2])
 		else:
@@ -1374,8 +1384,8 @@ def FilterData2DBData(FD_Date=None, FD_Group=None, FD_Timepoint=None, FD_LME=Non
 			EXPTABLE_SQL_Query = EXPTABLE_SQL_Query + " \"%s\" > %d"  %('short_term', FD_Latency[0])
 		elif FD_Latency[0] == -1 and FD_Latency[1] != -1:
 			EXPTABLE_SQL_Query = EXPTABLE_SQL_Query + " \"%s\" < %d"  %('short_term', FD_Latency[1])
-	if not isHaveFilter:
-		EXPTABLE_SQL_Query = EXPTABLE_SQL_Query + " 1"
+	# if not isHaveFilter:
+	# 	EXPTABLE_SQL_Query = EXPTABLE_SQL_Query + " 1"
 	WriteConsoleMsg("NOTICE", "SQL 查詢命令：%s" %(EXPTABLE_SQL_Query))
 
 def FilterData_ExperimentForTBI():
@@ -1383,6 +1393,7 @@ def FilterData_ExperimentForTBI():
 	global Filter_DateYearCombo, Filter_DateMonthCombo, Filter_DateDayCombo
 	global Filter_GroupCombo, Filter_TimepointCombo, Filter_LatencyLSpinbox, Filter_LatencyRSpinbox
 	global Filter_LMELSpinbox, Filter_LMERSpinbox, Filter_SMELSpinbox, Filter_SMERSpinbox
+	global EDCIP, FilterData_Group, Filter_GroupCombo
 
 	# now = datetime.datetime.now()
 	if not WIN_CLOSE_FilterData:
@@ -1390,6 +1401,7 @@ def FilterData_ExperimentForTBI():
 			global Filter_DateYearCombo, Filter_DateMonthCombo, Filter_DateDayCombo, EXPTABLE_SQL_DATA_PAGE
 			global Filter_GroupCombo, Filter_TimepointCombo, Filter_LatencyLSpinbox, Filter_LatencyRSpinbox
 			global Filter_LMELSpinbox, Filter_LMERSpinbox, Filter_SMELSpinbox, Filter_SMERSpinbox
+			global EDCIP, FilterData_Group, Filter_GroupCombo
 
 			Filter_Date = [Filter_DateYearCombo.get(), Filter_DateMonthCombo.get(), Filter_DateDayCombo.get()]
 			Filter_Group = Filter_GroupCombo.get()
@@ -1520,7 +1532,7 @@ def FilterData_ExperimentForTBI():
 
 		L2Y = 65
 		tk.Label(FilterData, text="●組別", font=('微軟正黑體', 11, 'bold')).place(x=10,y=L2Y,anchor="nw")
-		FilterData_Group = ['不限定', 'Sham', 'Sham+NS', 'Sham+MSC', 'rTBI+NS', 'rTBI+MSC']
+		FilterData_Group = EDPC.FilterData_Group[EDCIP.CURRENT_MODEL_NAME]
 		Filter_GroupCombo = ttk.Combobox(FilterData, width=10, values=FilterData_Group, font=('微軟正黑體', 10), state="readonly")
 		Filter_GroupCombo.place(x=70,y=L2Y+2,anchor="nw")
 		Filter_GroupCombo.current(0)
@@ -1576,7 +1588,8 @@ def setImgPathWindows():
 
 def CalculateDistance():
 	global SQL_CONN, EDCIP
-	sql_query = "SELECT \"ExpNo\",\"ExpDate\",\"Timepoint\", \"Total\" FROM \"VIEW_Experiment_Overview_TBI\" WHERE \"Model\" = \"TBI\""
+
+	sql_query = "SELECT \"ExpNo\",\"ExpDate\",\"Timepoint\", \"Total\" FROM \"VIEW_TOTAL_Experiment_Overview\" WHERE \"Models\" = \"%s\"" %(EDCIP.CURRENT_MODEL_NAME)
 	cursor = SQL_CONN.execute(sql_query)
 	result = cursor.fetchall()
 	ExpDate_List = []
@@ -1595,7 +1608,7 @@ def CalculateDistance():
 		ExpTP = ExpDate_List[i]["Timepoint"]
 		WriteConsoleMsg("INFO", "開始進行實驗數據距離時間計算...(實驗編號：%s 實驗日期：%s 時間點：%s)" %(ExpNo, ExpDate, ExpTP))
 
-		sql_query = "SELECT \"serial_data_id\", \"latency\" FROM \"VIEW_TBI_ExpDetail_Data\" WHERE \"ExpDate\" = \"{0}\" AND \"timepoints\" = \"{1}\" AND \"serial_data_id\" LIKE \"{2}%\"".format(ExpDate, ExpTP, ExpNo)
+		sql_query = "SELECT \"serial_data_id\", \"latency\" FROM \"VIEW_TOTAL_ExpDetail_Data\" WHERE \"Models\" = \"{3}\" AND \"ExpDate\" = \"{0}\" AND \"timepoints\" = \"{1}\" AND \"serial_data_id\" LIKE \"{2}%\"".format(ExpDate, ExpTP, ExpNo, EDCIP.CURRENT_MODEL_NAME)
 		cursor = SQL_CONN.execute(sql_query)
 		result = cursor.fetchall()
 		totalCount = len(result)
@@ -1653,7 +1666,7 @@ def ExportImg():
 				SuccessCount = 0
 				for row in result:
 					try:
-						EDCIP.ExportImg2Folder("TBI", Path_SavePath, row[0], IMG_NOW_Combo, IMG_FOLDER)
+						EDCIP.ExportImg2Folder(EDCIP.CURRENT_MODEL_NAME, Path_SavePath, row[0], IMG_NOW_Combo, IMG_FOLDER)
 						SuccessCount = SuccessCount + 1
 					except:
 						WriteConsoleMsg("ERROR", "輸出編號%s 圖片時發生錯誤!" %(row[0]))
@@ -1684,7 +1697,7 @@ def ExportImg():
 				SuccessCount = 0
 				for row in result:
 					try:
-						EDCIP.ExportCSV2Folder("TBI", Path_SavePath, row[0], CSV_NOW_Combo, "CSV")
+						EDCIP.ExportCSV2Folder(EDCIP.CURRENT_MODEL_NAME, Path_SavePath, row[0], CSV_NOW_Combo, "CSV")
 						SuccessCount = SuccessCount + 1
 					except:
 						WriteConsoleMsg("ERROR", "輸出編號%s CSV時發生錯誤!" %(row[0]))
@@ -1696,7 +1709,39 @@ def ExportImg():
 	else:
 		WriteConsoleMsg("NOTICE", "尚未選擇欲匯出的資料夾")
 
+def MoveLeftRightModel(l_R):
+	global tkWin, EXPTABLE_SQL_Query, IMG_Query
+	global EDCIP, EDPC, ChangeModel_Label, WIN_CLOSE_FilterData
+	global IMG_TBI_G, IMG_TBIG_Combo, FilterData_Group, Filter_GroupCombo
 
+	if l_R == "Left":
+		if EDPC.CURRENT_MODEL_ID <= 0:
+			EDPC.CURRENT_MODEL_ID = len(EDPC.CURRENT_MODEL_LIST)-1
+		else:
+			EDPC.CURRENT_MODEL_ID -= 1
+	elif l_R == "Right":
+		if EDPC.CURRENT_MODEL_ID >= len(EDPC.CURRENT_MODEL_LIST)-1:
+			EDPC.CURRENT_MODEL_ID = 0
+		else:
+			EDPC.CURRENT_MODEL_ID += 1
+	EDCIP.CURRENT_MODEL_NAME = EDPC.CURRENT_MODEL_LIST[EDPC.CURRENT_MODEL_ID]
+	ChangeModel_Label.config(text=EDCIP.CURRENT_MODEL_NAME)
+
+	EXPTABLE_SQL_Query = "SELECT * FROM \"VIEW_TOTAL_ExpDetail_Data\" WHERE \"Models\" = \"%s\" " %(EDCIP.CURRENT_MODEL_NAME)
+	IMG_Query = "SELECT \"serial_data_id\" FROM \"VIEW_TOTAL_ExpDetail_Data\" WHERE \"Models\" = \"%s\"" %(EDCIP.CURRENT_MODEL_NAME)
+	
+	SYSTEM_NAME = "實驗大鼠八臂迷宮數據管理系統(Model: %s)" %(EDCIP.CURRENT_MODEL_NAME)
+	tkWin.title(SYSTEM_NAME) #窗口名字
+
+	IMG_TBI_G = EDPC.IMG_TBI_G[EDCIP.CURRENT_MODEL_NAME]
+	IMG_TBIG_Combo.config(values=IMG_TBI_G)
+	IMG_TBIG_Combo.current(0)
+
+	if WIN_CLOSE_FilterData:
+		FilterData_Group = EDPC.FilterData_Group[EDCIP.CURRENT_MODEL_NAME]
+		Filter_GroupCombo.config(values=FilterData_Group)
+		Filter_GroupCombo.current(0)
+		
 def WindowsView():
 	global tkWin, TK_BT_ShowQuantity, CONSOLE_COLOR
 	global LOAD_CSV_NAME, TK_BT_SetExpCSV, TK_BT_LoadExpCSV
@@ -1710,6 +1755,17 @@ def WindowsView():
 	global EXPTABLE_SortData_BT, EXPTABLE_SORT_BY
 	global LOAD_CSV_IMG_PATH_DIR
 	global IMG_TP_Combo, IMG_TBIG_Combo, IMG_BT_OpenIMG, IMG_L_BT_Page, IMG_R_BT_Page, IMG_Page_Label
+	global EDCIP, ChangeModel_Label
+
+	# Models切換區
+	ChangeModel_Frame = tk.Frame(tkWin, width=60, height=55, bg="gray80")
+	ChangeModel_Frame.place(x=295, y=8, anchor="nw")
+	ChangeModel_L_BT = tk.Button(ChangeModel_Frame, text='◀ ', font=('微軟正黑體', 9), command=lambda: MoveLeftRightModel('Left'))
+	ChangeModel_L_BT.place(x=5,y=2,anchor="nw") #60
+	ChangeModel_R_BT = tk.Button(ChangeModel_Frame, text=' ▶', font=('微軟正黑體', 9), command=lambda: MoveLeftRightModel('Right'))
+	ChangeModel_R_BT.place(x=32,y=2,anchor="nw") #60
+	ChangeModel_Label = tk.Label(ChangeModel_Frame, text=EDCIP.CURRENT_MODEL_NAME, font=('微軟正黑體', 9, "bold"), bg="gray80")
+	ChangeModel_Label.place(x=30,y=32,anchor="n") #60
 
 	# 實驗數據匯入區
 	M1Y = 10
@@ -1733,76 +1789,10 @@ def WindowsView():
 	TK_BT_LoadPathData = tk.Button(tkWin, text='匯入資料', font=('微軟正黑體', 10), state="disabled", command=LoadPath_ExpData_CSV_IMG)
 	TK_BT_LoadPathData.place(x=290,y=M2Y-2,anchor="nw")
 
-	# # 實驗總數顯示區
-	# M3X = 370
-	# M3Y = 12
-	# TK_BT_ShowQuantity = tk.Button(tkWin, text='TBI 各組總數', font=('微軟正黑體', 10), bg="gray75", width=10, relief="flat", command=chooseQuantityType)
-	# TK_BT_ShowQuantity.place(x=M3X+1,y=M3Y-2,anchor="nw")
-	
-	# M3X_1 = M3X+95
-	# M3Y_1 = M3Y-2
-	# SHOW_TP_List = ['Pre', 'D07', 'D14', 'D28', 'M03', 'M06', 'M09']
-	# TP_Color = {
-	# 	"Pre": "SteelBlue", 
-	# 	"D07": "SkyBlue1", "D14": "SkyBlue2", "D28": "SkyBlue3", 
-	# 	"M03": "DeepSkyBlue1", "M06": "DeepSkyBlue2", "M09": "DeepSkyBlue3"
-	# }
-	# for i in range(len(SHOW_TP_List)):
-	# 	newTBI_Title_Frame = tk.Frame(tkWin, width=54, height=30, bg=TP_Color[SHOW_TP_List[i]])
-	# 	newTBI_Title_Frame.place(x=M3X_1 + 56*i,y=M3Y_1,anchor="nw")
-	# 	tk.Label(newTBI_Title_Frame, text=SHOW_TP_List[i], font=('微軟正黑體', 11), bg=TP_Color[SHOW_TP_List[i]]).place(x=27,y=2,anchor="n")
-
-	# M3X_2 = M3X
-	# M3Y_2 = M3Y+30
-	# SHOW_TBI_Group_List = ['Sham+NS', 'Sham+MSC', 'rTBI+NS', 'rTBI+MSC']
-	# for i in range(len(SHOW_TBI_Group_List)):
-	# 	newTBI_Group_Frame = tk.Frame(tkWin, width=90, height=24, bg="SkyBlue1")
-	# 	newTBI_Group_Frame.place(x=M3X_2, y=M3Y_2 + 26*i, anchor="nw")
-	# 	tk.Label(newTBI_Group_Frame, text=SHOW_TBI_Group_List[i], font=('微軟正黑體', 10), bg="SkyBlue1").place(x=45,y=1,anchor="n")
-	# 	for j in range(1,len(SHOW_TP_List)):
-	# 		newTBI_Data_Frame = tk.Frame(tkWin, width=54, height=24, bg="gray85")
-	# 		newTBI_Data_Frame.place(x=M3X_2 + 95 + 56*j, y=M3Y_2 + 26*i, anchor="nw")
-	# 		tk.Label(newTBI_Data_Frame, textvariable=TBI_QUANTITY_DATA[i][j], font=('微軟正黑體', 10), bg="gray85").place(x=27,y=1,anchor="n")
-	# newTBI_Data_Frame = tk.Frame(tkWin, width=54, height=26*4 - 2, bg="gray85")
-	# newTBI_Data_Frame.place(x=M3X_2 + 95, y=M3Y_2, anchor="nw")
-	# tk.Label(newTBI_Data_Frame, textvariable=TBI_QUANTITY_DATA[0][0], font=('微軟正黑體', 10), bg="gray85").place(x=27,y=(26*4-2)/2-10,anchor="n")
-
-	# M3X_3 = M3X+95
-	# M3Y_3 = M3Y+135
-	# for i in range(len(TBI_QUANTITY_TP_TOTAL)):
-	# 	newTBI_Total_Frame = tk.Frame(tkWin, width=54, height=24, bg="SkyBlue2")
-	# 	newTBI_Total_Frame.place(x=M3X_3 + 56*i, y=M3Y_3, anchor="nw")
-	# 	tk.Label(newTBI_Total_Frame, textvariable=TBI_QUANTITY_TP_TOTAL[i], font=('微軟正黑體', 10, 'bold'), bg="SkyBlue2").place(x=27,y=0,anchor="n")
-	
-	# M3X_4 = M3X+487
-	# M3Y_4 = M3Y+30
-	# for i in range(len(TBI_QUANTITY_Group_TOTAL)):
-	# 	newTBI_Group_Total_Frame = tk.Frame(tkWin, width=82, height=24, bg="DeepSkyBlue1")
-	# 	newTBI_Group_Total_Frame.place(x=M3X_4, y=M3Y_4 + 26*i, anchor="nw")
-	# 	tk.Label(newTBI_Group_Total_Frame, textvariable=TBI_QUANTITY_Group_TOTAL[i], font=('微軟正黑體', 10, 'bold'), bg="DeepSkyBlue1").place(x=41, y=1, anchor="n")
-
-	# M3X_5 = M3X+487
-	# M3Y_5 = M3Y-2
-	# newTBI_Group_Total_Label = tk.Frame(tkWin, width=82, height=30, bg="DeepSkyBlue1")
-	# newTBI_Group_Total_Label.place(x=M3X_5,y=M3Y_5,anchor="nw")
-	# tk.Label(newTBI_Group_Total_Label, text="Total(術後)", font=('微軟正黑體', 10, 'bold'), bg="DeepSkyBlue1").place(x=41, y=3, anchor="n")
-	
-	# M3X_6 = M3X
-	# M3Y_6 = M3Y+135
-	# newTBI_TP_Total_Label = tk.Frame(tkWin, width=90, height=24, bg="SkyBlue2")
-	# newTBI_TP_Total_Label.place(x=M3X_6,y=M3Y_6,anchor="nw")
-	# tk.Label(newTBI_TP_Total_Label, text="Total(整體)", font=('微軟正黑體', 10, "bold"), bg="SkyBlue2").place(x=45,y=1,anchor="n")
-
-	# M3X_7 = M3X+487
-	# M3Y_7 = M3Y+135
-	# newTBI_TP_Total_Total = tk.Frame(tkWin, width=82, height=24, bg="SkyBlue1")
-	# newTBI_TP_Total_Total.place(x=M3X_7,y=M3Y_7,anchor="nw")
-	# tk.Label(newTBI_TP_Total_Total, textvariable=TBI_QUANTITY_TOTAL_TOTAL, font=('微軟正黑體', 11, 'bold'), bg="SkyBlue1").place(x=41,y=0,anchor="n")
-
 	# 實驗天數資料顯示區
 	M4X = 10
 	M4Y = 130
-	tk.Label(tkWin, text="TBI 實驗日期總覽", font=('微軟正黑體', 11), bg="gray75").place(x=M4X,y=M4Y,anchor="nw")
+	tk.Label(tkWin, text="實驗日期總覽", font=('微軟正黑體', 11), bg="gray75").place(x=M4X,y=M4Y,anchor="nw")
 	TK_SHOW_CAL_Month = tk.Label(tkWin, textvariable=TK_NOW_CAL_M, font=('微軟正黑體', 11, "bold"))
 	TK_SHOW_CAL_Month.place(x=M4X+125,y=M4Y,anchor="nw")
 	tk.Button(tkWin, text='◀', font=('微軟正黑體', 10), width=5, command=lambda: MoveUpDownCal('Down')).place(x=M4X+235,y=M4Y-2,anchor="nw")
@@ -1858,7 +1848,7 @@ def WindowsView():
 	# 實驗數據展示區
 	M7X = 370
 	M7Y = 85
-	tk.Label(tkWin, text="實驗數據詳細資料(TBI)", font=('微軟正黑體', 11), bg="gray75").place(x=M7X,y=M7Y,anchor="nw")
+	tk.Label(tkWin, text="實驗數據詳細資料", font=('微軟正黑體', 11), bg="gray75").place(x=M7X,y=M7Y,anchor="nw")
 	M7TB_X = M7X
 	M7TB_Y = M7Y + 48
 	ExpDate_TBT = ['日期', '組別', '時間點', '編號', '*LME', '*SME', '中央(time)', '目標(time)', '一般(time)', 'TMS(cm/s)', '總距離(cm)', '總時間(s)', '採用']
@@ -1924,7 +1914,7 @@ def WindowsView():
 	M20Y = 15
 	tk.Label(tkWin, text="路徑結果圖顯示區", font=('微軟正黑體', 11), bg="gray75").place(x=M20X,y=M20Y,anchor="nw")
 	IMG_TP = ['請選擇時間點', '手術前', '手術後7天', '手術後14天', '手術後28天', '手術後3個月', '手術後6個月', '手術後9個月']
-	IMG_TBI_G = ['請選擇組別', 'Sham', 'Sham+NS', 'Sham+MSC', 'rTBI+NS', 'rTBI+MSC']
+	IMG_TBI_G = EDPC.IMG_TBI_G[EDCIP.CURRENT_MODEL_NAME]
 	IMG_TP_Combo = ttk.Combobox(tkWin, width=10, values=IMG_TP, font=('微軟正黑體', 10), state="readonly")
 	IMG_TP_Combo.place(x=M20X+280,y=M20Y,anchor="nw")
 	IMG_TP_Combo.current(0)
@@ -1951,7 +1941,7 @@ def WindowsView():
 	# tk.Button(tkWin, text='試色', width=7, font=('微軟正黑體', 10), command=EDCIP.testingColor).place(x=M21X,y=M21Y+50,anchor="nw")
 
 	tkWin.protocol("WM_DELETE_WINDOW", Main_WindowsClosing)
-	updateTBI_Quantity(TBI_QUANTITY_DATA_TYPE)
+	# updateTBI_Quantity(TBI_QUANTITY_DATA_TYPE)
 	updateTBI_ExpDateCal(CAL_CURRENT_M)
 	updateTBI_ExpDataTable(EXPTABLE_SQL_Query, EXPTABLE_SQL_DATA_PAGE, EXPTABLE_SQL_DATA_MAXITEM)
 	WriteConsoleMsg("NONE", "歡迎使用 %s" %(SYSTEM_NAME))
