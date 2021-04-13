@@ -35,13 +35,25 @@ TK_BT_ShowQuantity = ""
 TK_SHOW_CAL_Month = ""
 TK_Console_Line = ["", "", "", "", "", ""]
 TKE_Command = ""
+IMG_TP = ""
+IMG_TP_Combo = ""
 DEL_Cal = ""
+DEL_TimepointCombo = ""
 TK_BT_DEL_ExpData = ""
 TK_BT_EXP_HAVE_PATH = ""
 FilterData_Group = ""
 Filter_GroupCombo = ""
+FilterData_Timepoint = ""
+Filter_TimepointCombo = ""
 
 EDCIP.CURRENT_MODEL_NAME = EDPC.CURRENT_MODEL_LIST[EDPC.CURRENT_MODEL_ID]
+CURRENT_CONVERT_TP_STR2ID = EDPC.CURRENT_CONVERT_TP_STR2ID_LIST[EDPC.CURRENT_CONVERT_TP_ID]
+CURRENT_CONVERT_TP_ID2STR = EDPC.CURRENT_CONVERT_TP_ID2STR_LIST[EDPC.CURRENT_CONVERT_TP_ID]
+CURRENT_TP_OnlyID = EDPC.CURRENT_TP_OnlyID_LIST[EDPC.CURRENT_CONVERT_TP_ID]
+CURRENT_CONVERT_TP_ID2SHOW = EDPC.CURRENT_CONVERT_TP_ID2SHOW_LIST[EDPC.CURRENT_CONVERT_TP_ID]
+CURRENT_TP_OnlyShow = EDPC.CURRENT_TP_OnlyShow_LIST[EDPC.CURRENT_CONVERT_TP_ID]
+CURRENT_TimepointList = EDPC.CURRENT_TimepointList[EDPC.CURRENT_CONVERT_TP_ID]
+
 SYSTEM_NAME = "實驗大鼠八臂迷宮數據管理系統(Model: %s)" %(EDCIP.CURRENT_MODEL_NAME)
 
 tkWin = tk.Tk()
@@ -60,7 +72,7 @@ LoadCSV = ""
 FilterData = ""
 LoadPath = ""
 
-SQL_CONN = sqlite3.connect("./sqlite3_chimei_data.db") #建立資料庫連結
+SQL_CONN = sqlite3.connect("./sqlite3_ChiMei_Eight_Arm_FullData.db") #建立資料庫連結
 CONSOLE_FLAG = 0 #新的一則訊息要寫在哪個位置
 CONSOLE_COLOR = {"GOOD": "green2", "ERROR": "orangered2", "INFO": "cyan", "NOTICE": "yellow2", "NONE": "white", "NULL": "black"}
 CONSOLE_MSG = [ # 顏色, 訊息, 上一則位置, 下一則位置
@@ -346,7 +358,7 @@ def InsertExpData2DB(exp_date, model, timepoint, csv_filepath, csv_filename, Pat
 	for row in csv_original_data[1:]:
 		ratGroup, ratId, longTerm, shortTerm, Latency = row[0], row[1], int(row[3]), int(row[4]), row[6]
 		print(ratGroup, ratId, longTerm, shortTerm, Latency)
-		EDPC.ModelGroupCheck(model)
+		model, ratGroup, timepoint = EDPC.ModelGroupCheck(model, ratGroup, timepoint)
 		
 		Latency = string2Second(row[6])
 		print(ratGroup, ratId, longTerm, shortTerm, Latency)
@@ -408,6 +420,8 @@ def LoadPath_ExpData_CSV_IMG():
 	global SQL_CONN
 	global EDCIP, LoadPath, WIN_CLOSE_LoadPath
 	global LOAD_CSV_IMG_PATH_DIR
+	global CURRENT_CONVERT_TP_STR2ID, CURRENT_CONVERT_TP_ID2STR, CURRENT_TP_OnlyID
+	global CURRENT_TimepointList
 
 	nowPath = LOAD_CSV_IMG_PATH_DIR.get()
 	TypeCSV_BT = "" 
@@ -428,12 +442,8 @@ def LoadPath_ExpData_CSV_IMG():
 	Search_ExpData_BT = ""
 	Default_Info = [[-1, -1, -1], ""] #預設日期, 模型
 	RatInfo = [] #存放實驗大鼠路徑數據相關資料
-	covertTimepoint = {
-		'手術前':'pre', 
-		'手術後7天':'00M07D', '手術後14天':'00M14D', 
-		'手術後28天':'00M28D', '手術後3個月':'03M00D', 
-		'手術後6個月':'06M00D', '手術後9個月':'09M00D'
-	}
+	covertTimepoint = CURRENT_CONVERT_TP_STR2ID
+
 	if not WIN_CLOSE_LoadPath:
 		def chooseFileType(fType):
 			global Default_Info, ExpData_Type
@@ -514,6 +524,7 @@ def LoadPath_ExpData_CSV_IMG():
 
 		def LoadPathDataIntoDB():
 			global Default_Info, ExpData_Type
+
 			ExpNo = ExpData_No_Label['text']
 			ExpModel = Default_Info[1]
 			ExpDate = "%04d/%02d/%02d" %(Default_Info[0][0], Default_Info[0][1], Default_Info[0][2])
@@ -605,7 +616,7 @@ def LoadPath_ExpData_CSV_IMG():
 		FileModel_Label.place(x=90,y=L4Y,anchor="nw")
 
 		L5Y = 130
-		TimepointList = ['請選擇...', '手術前', '手術後7天', '手術後14天', '手術後28天', '手術後3個月', '手術後6個月', '手術後9個月']
+		TimepointList = CURRENT_TimepointList
 		tk.Label(LoadPath, text="時間點", font=('微軟正黑體', 12)).place(x=10,y=L5Y,anchor="nw")
 		TimepointCombo = ttk.Combobox(LoadPath, width=12, values=TimepointList, font=('微軟正黑體', 10), state="readonly")
 		TimepointCombo.place(x=90,y=L5Y+2,anchor="nw")
@@ -646,6 +657,7 @@ def LoadCSV_ExperimentData():
 	global LOAD_EXP_DATE, LOAD_EXP_MODEL, LOAD_EXP_TIMEPOINT, LOAD_CSV_NAME, LOAD_CSV_PATH, LOAD_CSV_FULL_NAME, LOAD_EXP_TIMEPOINT_ID, LOAD_EXP_MODEL_ID
 	global TKE_Command, LOAD_EXP_HAVE_PATH, TK_BT_EXP_HAVE_PATH
 	global IS_SET_ExpData_File, TK_BT_SetExpCSV
+	global CURRENT_CONVERT_TP_STR2ID, CURRENT_CONVERT_TP_ID2STR, CURRENT_TP_OnlyID, CURRENT_TimepointList
 
 	if not WIN_CLOSE_LoadCSV:
 
@@ -653,6 +665,7 @@ def LoadCSV_ExperimentData():
 			global LOAD_EXP_DATE, LOAD_PATH_DIR, LOAD_EXP_MODEL, LOAD_EXP_TIMEPOINT, LOAD_CSV_NAME, LOAD_CSV_PATH, LOAD_CSV_FULL_NAME, LOAD_EXP_TIMEPOINT_ID, LOAD_EXP_MODEL_ID
 			global TKE_Command, LOAD_EXP_HAVE_PATH, TK_BT_EXP_HAVE_PATH
 			global IS_SET_ExpData_File, TK_BT_SetExpCSV
+			global CURRENT_CONVERT_TP_STR2ID, CURRENT_CONVERT_TP_ID2STR, CURRENT_TP_OnlyID
 
 			expDate = cal.get()
 			sp_expdate = expDate.split("/")
@@ -671,7 +684,7 @@ def LoadCSV_ExperimentData():
 				InfoMsg = InfoMsg + "是否有路徑資料：%s\n" %(LOAD_EXP_HAVE_PATH)
 				InfoMsg = InfoMsg + "檔案名稱：%s" %(LOAD_CSV_NAME.get())
 				
-				covertTimepoint = ['pre', '00M07D', '00M14D', '00M28D', '03M00D', '06M00D', '09M00D']
+				covertTimepoint = CURRENT_TP_OnlyID
 				LOAD_EXP_DATE = newExpDate
 				LOAD_EXP_TIMEPOINT_ID = TimepointCombo.current()
 				LOAD_EXP_MODEL_ID = ModelCombo.current()
@@ -731,7 +744,7 @@ def LoadCSV_ExperimentData():
 			ModelCombo.current(0)
 
 		L3Y = 70
-		TimepointList = ['請選擇...', '手術前', '手術後7天', '手術後14天', '手術後28天', '手術後3個月', '手術後6個月', '手術後9個月']
+		TimepointList = CURRENT_TimepointList
 		tk.Label(LoadCSV, text="時間點", font=('微軟正黑體', 12)).place(x=10,y=L3Y,anchor="nw")
 		TimepointCombo = ttk.Combobox(LoadCSV, width=12, values=TimepointList, font=('微軟正黑體', 10, "bold"), state="readonly")
 		TimepointCombo.place(x=85,y=L3Y+2,anchor="nw")
@@ -941,6 +954,7 @@ def updateTBI_ExpDataTable(sql_query, data_page, max_item):
 
 def updateTBI_ExpDateCal(c_month):
 	global CAL_DATE_NUM, CAL_ExpDate_Label, EDCIP
+	global EDPC, CURRENT_CONVERT_TP_STR2ID, CURRENT_CONVERT_TP_ID2STR, CURRENT_TP_OnlyID, CURRENT_CONVERT_TP_ID2SHOW
 
 	# 相關參數重置
 	defaultColor = "gray85"
@@ -955,32 +969,7 @@ def updateTBI_ExpDateCal(c_month):
 
 	# 提取哪幾天有做實驗
 	MonthExpList = []
-	TP_Convert = {"pre": "Pre", "00M07D": "D07", "00M14D": "D14", "00M28D": "D28", "03M00D": "M03", "06M00D": "M06", "09M00D": "M09"}
-	TP_Color0 = { #綠色(無手寫資料)
-		"Pre": "OliveDrab", 
-		"D07": "OliveDrab1", "D14": "OliveDrab2", "D28": "OliveDrab3", 
-		"M03": "DarkOliveGreen1", "M06": "DarkOliveGreen2", "M09": "DarkOliveGreen3"
-	}
-	TP_Color1 = { #藍色(有手寫資料，但CSV/IMG還沒上傳)
-		"Pre": "SteelBlue", 
-		"D07": "SkyBlue1", "D14": "SkyBlue2", "D28": "SkyBlue3", 
-		"M03": "DeepSkyBlue1", "M06": "DeepSkyBlue2", "M09": "DeepSkyBlue3"
-	}
-	TP_Color2 = { #黃色(有手寫資料，但只有CSV上傳)
-		"Pre": "DarkGoldenrod", 
-		"D07": "gold", "D14": "gold2", "D28": "gold3", 
-		"M03": "goldenrod", "M06": "goldenrod2", "M09": "goldenrod3"
-	}
-	TP_Color3 = { #橘色(有手寫資料，但只有IMG上傳)
-		"Pre": "DarkOrange", 
-		"D07": "orange", "D14": "orange2", "D28": "orange3", 
-		"M03": "DarkOrange2", "M06": "DarkOrange3", "M09": "DarkOrange4"
-	}
-	TP_Color4 = { #紫色(有手寫資料，IMG/CSV都上傳)
-		"Pre": "MediumOrchid", 
-		"D07": "MediumOrchid1", "D14": "MediumOrchid2", "D28": "MediumOrchid3", 
-		"M03": "DarkOrchid1", "M06": "DarkOrchid2", "M09": "DarkOrchid3"
-	}
+	TP_Convert = CURRENT_CONVERT_TP_ID2SHOW
 	for i in range(31):
 		MonthExpList.append([])
 	sql_query = "SELECT \"ExpNo\",\"ExpDate\",\"Timepoint\",\"Total\",\"PathState\",\"CSV_Upload\",\"IMG_Upload\" FROM \"VIEW_TOTAL_Experiment_Overview\" WHERE \"Models\" = \"{2}\" AND \"ExpDate\" LIKE \"{0}/{1}/%\" ORDER BY \"ExpDate\", \"Timepoint\"".format(
@@ -994,15 +983,15 @@ def updateTBI_ExpDateCal(c_month):
 		thisDate = row[1].split("/")
 		newColor = ""
 		if row[4] == 0:
-			newColor = TP_Color0[TP_Convert[row[2]]]
+			newColor = EDPC.TP_Color0[TP_Convert[row[2]]]
 		elif row[4] == 1 and row[5] == 0 and row[6] == 0:
-			newColor = TP_Color1[TP_Convert[row[2]]]
+			newColor = EDPC.TP_Color1[TP_Convert[row[2]]]
 		elif row[4] == 1 and row[5] == 1 and row[6] == 0:
-			newColor = TP_Color2[TP_Convert[row[2]]]
+			newColor = EDPC.TP_Color2[TP_Convert[row[2]]]
 		elif row[4] == 1 and row[5] == 0 and row[6] == 1:
-			newColor = TP_Color3[TP_Convert[row[2]]]
+			newColor = EDPC.TP_Color3[TP_Convert[row[2]]]
 		elif row[4] == 1 and row[5] == 1 and row[6] == 1:
-			newColor = TP_Color4[TP_Convert[row[2]]]
+			newColor = EDPC.TP_Color4[TP_Convert[row[2]]]
 		MonthExpList[int(thisDate[2])-1].append([TP_Convert[row[2]], row[3], newColor])
 	# print(MonthExpList)
 
@@ -1084,15 +1073,16 @@ def updateTBI_ExpImgPath(isOpenView):
 	global SQL_CONN
 	global IMG_TP_Combo, IMG_TBIG_Combo, IMG_BT_OpenIMG, IMG_L_BT_Page, IMG_R_BT_Page, IMG_Query, IMG_NOW_Combo
 	global IMG_Page_STATE, IMG_Page_TOTAL, IMG_ExpID_List, IMG_PAGE_CHANGE, IMG_Page_Label, IMG_FOLDER, IMG_VIEW_COUNT
-	global EDCIP
+	global EDCIP, CURRENT_CONVERT_TP_ID2SHOW, CURRENT_CONVERT_TP_STR2ID
 
-	covertTP = {'手術前':"Pre", '手術後7天':"D07", '手術後14天':"D14", '手術後28天':"D28", '手術後3個月':"M03", '手術後6個月':"M06", '手術後9個月':"M09"}
-	
+	# covertTP = CURRENT_CONVERT_TP_ID2SHOW[CURRENT_CONVERT_TP_STR2ID[]]
+
 	if IMG_TP_Combo.current() != 0 and IMG_TBIG_Combo.current() != 0:
 		if (IMG_TP_Combo.current() != IMG_NOW_Combo[0]) or (IMG_TBIG_Combo.current() != IMG_NOW_Combo[1]):
 			IMG_Query = "SELECT \"serial_data_id\" FROM \"VIEW_TOTAL_ExpDetail_Data\" WHERE \"Models\" = \"%s\" AND \"isFilter\" = 1 AND \"groups\" = \"%s\" AND \"timepoints\" = \"%s\" ORDER BY \"serial_data_id\" DESC" %(
 				EDCIP.CURRENT_MODEL_NAME,
-				IMG_TBIG_Combo.get(), covertTP[IMG_TP_Combo.get()]
+				# IMG_TBIG_Combo.get(), covertTP[IMG_TP_Combo.get()]
+				IMG_TBIG_Combo.get(), CURRENT_CONVERT_TP_ID2SHOW[CURRENT_CONVERT_TP_STR2ID[IMG_TP_Combo.get()]]
 			)
 			# print(IMG_Query)
 			cursor = SQL_CONN.execute(IMG_Query)
@@ -1139,7 +1129,8 @@ def updateTBI_ExpImgPath(isOpenView):
 		IMG_PAGE_CHANGE = False
 	
 	if isOpenView:
-		PathInfo_List = [covertTP[IMG_TP_Combo.get()], IMG_TBIG_Combo.get(), IMG_Page_TOTAL, IMG_Page_STATE] #時間點 組別 總筆數 目前頁數
+		PathInfo_List = [CURRENT_CONVERT_TP_ID2SHOW[CURRENT_CONVERT_TP_STR2ID[IMG_TP_Combo.get()]], 
+		IMG_TBIG_Combo.get(), IMG_Page_TOTAL, IMG_Page_STATE] #時間點 組別 總筆數 目前頁數
 		if IMG_VIEW_COUNT == 1:
 			EDCIP.showMultiImgPath(IMG_ExpID_List, PathInfo_List, IMG_FOLDER)
 		elif IMG_VIEW_COUNT == 8:
@@ -1223,6 +1214,7 @@ def DeleteExpData():
 	global SQL_CONN
 	global DEL_TimepointCombo, DEL_Cal
 	global EDCIP
+	global EDPC, CURRENT_CONVERT_TP_STR2ID, CURRENT_CONVERT_TP_ID2STR, CURRENT_TP_OnlyID, CURRENT_CONVERT_TP_ID2SHOW
 
 	expDate = DEL_Cal.get()
 	sp_expdate = expDate.split("/")
@@ -1232,8 +1224,8 @@ def DeleteExpData():
 		newExpDate = "%04d/%02d/%02d" %(int(sp_expdate[2]), int(sp_expdate[0]), int(sp_expdate[2]))
 	else:
 		newExpDate = "20%02d/%02d/%02d" %(int(sp_expdate[2]), int(sp_expdate[0]), int(sp_expdate[1]))
-	covertTP = {'手術前':"pre", '手術後7天':"00M07D", '手術後14天':"00M14D", '手術後28天':"00M28D", '手術後3個月':"03M00D", '手術後6個月':"06M00D", '手術後9個月':"09M00D"}
-	backTP = {"pre":'手術前', "00M07D":'手術後7天', "00M14D":'手術後14天', "00M28D":'手術後28天', "03M00D":'手術後3個月', "06M00D":'手術後6個月', "09M00D":'手術後9個月'}
+	covertTP = CURRENT_CONVERT_TP_STR2ID
+	backTP = CURRENT_CONVERT_TP_ID2STR
 	nowTP = DEL_TimepointCombo.get()
 	if DEL_TimepointCombo.current() != 0:
 		sql_query = "SELECT \"ExpNo\", \"ExpDate\", \"Timepoint\", \"Total\" FROM \"VIEW_TOTAL_Experiment_Overview\" WHERE \"Models\" = \"%s\" AND \"ExpDate\" = \"%s\" and \"Timepoint\" = \"%s\"" %(EDCIP.CURRENT_MODEL_NAME, newExpDate, covertTP[nowTP])
@@ -1393,7 +1385,7 @@ def FilterData_ExperimentForTBI():
 	global Filter_DateYearCombo, Filter_DateMonthCombo, Filter_DateDayCombo
 	global Filter_GroupCombo, Filter_TimepointCombo, Filter_LatencyLSpinbox, Filter_LatencyRSpinbox
 	global Filter_LMELSpinbox, Filter_LMERSpinbox, Filter_SMELSpinbox, Filter_SMERSpinbox
-	global EDCIP, FilterData_Group, Filter_GroupCombo
+	global EDCIP, FilterData_Group, Filter_GroupCombo, FilterData_Timepoint, CURRENT_TP_OnlyShow
 
 	# now = datetime.datetime.now()
 	if not WIN_CLOSE_FilterData:
@@ -1401,7 +1393,7 @@ def FilterData_ExperimentForTBI():
 			global Filter_DateYearCombo, Filter_DateMonthCombo, Filter_DateDayCombo, EXPTABLE_SQL_DATA_PAGE
 			global Filter_GroupCombo, Filter_TimepointCombo, Filter_LatencyLSpinbox, Filter_LatencyRSpinbox
 			global Filter_LMELSpinbox, Filter_LMERSpinbox, Filter_SMELSpinbox, Filter_SMERSpinbox
-			global EDCIP, FilterData_Group, Filter_GroupCombo
+			global EDCIP, FilterData_Group, Filter_GroupCombo, FilterData_Timepoint, CURRENT_TP_OnlyShow
 
 			Filter_Date = [Filter_DateYearCombo.get(), Filter_DateMonthCombo.get(), Filter_DateDayCombo.get()]
 			Filter_Group = Filter_GroupCombo.get()
@@ -1540,7 +1532,7 @@ def FilterData_ExperimentForTBI():
 		L3X = 170
 		L3Y = 65
 		tk.Label(FilterData, text="●時間點", font=('微軟正黑體', 11, 'bold')).place(x=L3X+10,y=L3Y,anchor="nw")
-		FilterData_Timepoint = ['不限定', 'Pre', 'D07', 'D14', 'D28', 'M03', 'M06', 'M09']
+		FilterData_Timepoint = CURRENT_TP_OnlyShow
 		Filter_TimepointCombo = ttk.Combobox(FilterData, width=5, values=FilterData_Timepoint, font=('微軟正黑體', 10), state="readonly")
 		Filter_TimepointCombo.place(x=L3X+85,y=L3Y+2,anchor="nw")
 		Filter_TimepointCombo.current(0)
@@ -1648,9 +1640,9 @@ def ChangeIMGViewSize():
 	WriteConsoleMsg("INFO", "更換圖片顯示模式為%d筆" %(IMG_VIEW_COUNT))
 
 def ExportImg():
-	global IMG_Query, IMG_TP_Combo, IMG_TBIG_Combo, IMG_FOLDER
+	global IMG_Query, IMG_TP_Combo, IMG_TBIG_Combo, IMG_FOLDER, CURRENT_CONVERT_TP_STR2ID
 
-	covertTP = {'手術前':"Pre", '手術後7天':"D07", '手術後14天':"D14", '手術後28天':"D28", '手術後3個月':"M03", '手術後6個月':"M06", '手術後9個月':"M09"}
+	covertTP = CURRENT_CONVERT_TP_STR2ID
 	if IMG_TP_Combo.current() != 0 and  IMG_TBIG_Combo.current() != 0:
 		IMG_NOW_Combo = [covertTP[IMG_TP_Combo.get()], IMG_TBIG_Combo.get()]
 	else:
@@ -1678,10 +1670,10 @@ def ExportImg():
 	else:
 		WriteConsoleMsg("NOTICE", "尚未選擇欲匯出的資料夾")
 
-def ExportImg():
-	global IMG_Query, IMG_TP_Combo, IMG_TBIG_Combo
+def ExportCSV():
+	global IMG_Query, IMG_TP_Combo, IMG_TBIG_Combo, CURRENT_CONVERT_TP_STR2ID
 
-	covertTP = {'手術前':"Pre", '手術後7天':"D07", '手術後14天':"D14", '手術後28天':"D28", '手術後3個月':"M03", '手術後6個月':"M06", '手術後9個月':"M09"}
+	covertTP = CURRENT_CONVERT_TP_STR2ID
 	if IMG_TP_Combo.current() != 0 and  IMG_TBIG_Combo.current() != 0:
 		CSV_NOW_Combo = [covertTP[IMG_TP_Combo.get()], IMG_TBIG_Combo.get()]
 	else:
@@ -1711,8 +1703,9 @@ def ExportImg():
 
 def MoveLeftRightModel(l_R):
 	global tkWin, EXPTABLE_SQL_Query, IMG_Query
-	global EDCIP, EDPC, ChangeModel_Label, WIN_CLOSE_FilterData
-	global IMG_TBI_G, IMG_TBIG_Combo, FilterData_Group, Filter_GroupCombo
+	global EDCIP, EDPC, ChangeModel_Label, WIN_CLOSE_FilterData, IMG_TP, IMG_TP_Combo
+	global IMG_TBI_G, IMG_TBIG_Combo, FilterData_Group, Filter_GroupCombo, Filter_TimepointCombo, CURRENT_TimepointList, DEL_TimepointCombo
+	global CURRENT_CONVERT_TP_STR2ID, CURRENT_CONVERT_TP_ID2STR, CURRENT_CONVERT_TP_ID2SHOW, CURRENT_TP_OnlyID, CURRENT_TP_OnlyShow
 
 	if l_R == "Left":
 		if EDPC.CURRENT_MODEL_ID <= 0:
@@ -1727,6 +1720,18 @@ def MoveLeftRightModel(l_R):
 	EDCIP.CURRENT_MODEL_NAME = EDPC.CURRENT_MODEL_LIST[EDPC.CURRENT_MODEL_ID]
 	ChangeModel_Label.config(text=EDCIP.CURRENT_MODEL_NAME)
 
+	if EDPC.CURRENT_MODEL_LIST[EDPC.CURRENT_MODEL_ID] == "HI":
+		EDPC.CURRENT_CONVERT_TP_ID = 1
+	else:
+		EDPC.CURRENT_CONVERT_TP_ID = 0
+	CURRENT_CONVERT_TP_STR2ID = EDPC.CURRENT_CONVERT_TP_STR2ID_LIST[EDPC.CURRENT_CONVERT_TP_ID]
+	CURRENT_CONVERT_TP_ID2STR = EDPC.CURRENT_CONVERT_TP_ID2STR_LIST[EDPC.CURRENT_CONVERT_TP_ID]
+	CURRENT_TP_OnlyID = EDPC.CURRENT_TP_OnlyID_LIST[EDPC.CURRENT_CONVERT_TP_ID]
+	CURRENT_CONVERT_TP_ID2SHOW = EDPC.CURRENT_CONVERT_TP_ID2SHOW_LIST[EDPC.CURRENT_CONVERT_TP_ID]
+	CURRENT_TP_OnlyShow = EDPC.CURRENT_TP_OnlyShow_LIST[EDPC.CURRENT_CONVERT_TP_ID]
+	CURRENT_TimepointList = EDPC.CURRENT_TimepointList[EDPC.CURRENT_CONVERT_TP_ID]
+	DEL_TimepointCombo.config(values=CURRENT_TimepointList)
+
 	EXPTABLE_SQL_Query = "SELECT * FROM \"VIEW_TOTAL_ExpDetail_Data\" WHERE \"Models\" = \"%s\" " %(EDCIP.CURRENT_MODEL_NAME)
 	IMG_Query = "SELECT \"serial_data_id\" FROM \"VIEW_TOTAL_ExpDetail_Data\" WHERE \"Models\" = \"%s\"" %(EDCIP.CURRENT_MODEL_NAME)
 	
@@ -1736,11 +1741,16 @@ def MoveLeftRightModel(l_R):
 	IMG_TBI_G = EDPC.IMG_TBI_G[EDCIP.CURRENT_MODEL_NAME]
 	IMG_TBIG_Combo.config(values=IMG_TBI_G)
 	IMG_TBIG_Combo.current(0)
+	IMG_TP = CURRENT_TimepointList
+	IMG_TP_Combo.config(values=IMG_TP)
+	IMG_TP_Combo.current(0)
 
 	if WIN_CLOSE_FilterData:
 		FilterData_Group = EDPC.FilterData_Group[EDCIP.CURRENT_MODEL_NAME]
 		Filter_GroupCombo.config(values=FilterData_Group)
 		Filter_GroupCombo.current(0)
+		Filter_TimepointCombo.config(values=CURRENT_TP_OnlyShow)
+		Filter_TimepointCombo.current(0)
 		
 def WindowsView():
 	global tkWin, TK_BT_ShowQuantity, CONSOLE_COLOR
@@ -1755,7 +1765,7 @@ def WindowsView():
 	global EXPTABLE_SortData_BT, EXPTABLE_SORT_BY
 	global LOAD_CSV_IMG_PATH_DIR
 	global IMG_TP_Combo, IMG_TBIG_Combo, IMG_BT_OpenIMG, IMG_L_BT_Page, IMG_R_BT_Page, IMG_Page_Label
-	global EDCIP, ChangeModel_Label
+	global EDCIP, ChangeModel_Label, CURRENT_TimepointList, DEL_TimepointCombo, IMG_TP
 
 	# Models切換區
 	ChangeModel_Frame = tk.Frame(tkWin, width=60, height=55, bg="gray80")
@@ -1838,7 +1848,7 @@ def WindowsView():
 	DEL_Cal = DateEntry(tkWin, width=10, background='gray', dateformat=4, font=('微軟正黑體', 10, "bold"), foreground='white', borderwidth=2, state="readonly")
 	DEL_Cal.place(x=M6X+170,y=M6Y+2,anchor="nw")
 	tk.Label(tkWin, text="時間點", font=('微軟正黑體', 11)).place(x=M6X+280,y=M6Y,anchor="nw")
-	DEL_Timepoint = ['請選擇...', '手術前', '手術後7天', '手術後14天', '手術後28天', '手術後3個月', '手術後6個月', '手術後9個月']
+	DEL_Timepoint = CURRENT_TimepointList
 	DEL_TimepointCombo = ttk.Combobox(LoadCSV, width=12, values=DEL_Timepoint, font=('微軟正黑體', 10), state="readonly")
 	DEL_TimepointCombo.place(x=M6X+335,y=M6Y+2,anchor="nw")
 	DEL_TimepointCombo.current(0)
@@ -1913,7 +1923,7 @@ def WindowsView():
 	M20X = 370
 	M20Y = 15
 	tk.Label(tkWin, text="路徑結果圖顯示區", font=('微軟正黑體', 11), bg="gray75").place(x=M20X,y=M20Y,anchor="nw")
-	IMG_TP = ['請選擇時間點', '手術前', '手術後7天', '手術後14天', '手術後28天', '手術後3個月', '手術後6個月', '手術後9個月']
+	IMG_TP = CURRENT_TimepointList
 	IMG_TBI_G = EDPC.IMG_TBI_G[EDCIP.CURRENT_MODEL_NAME]
 	IMG_TP_Combo = ttk.Combobox(tkWin, width=10, values=IMG_TP, font=('微軟正黑體', 10), state="readonly")
 	IMG_TP_Combo.place(x=M20X+280,y=M20Y,anchor="nw")
@@ -1936,7 +1946,7 @@ def WindowsView():
 	M21Y = 10
 	tk.Button(tkWin, text='更新全部\n距離速率', width=7, font=('微軟正黑體', 10), command=CalculateDistance).place(x=M21X,y=M21Y,anchor="nw")
 	tk.Button(tkWin, text='匯出目前\n所選圖片', width=7, font=('微軟正黑體', 10), command=ExportImg).place(x=M21X+80,y=M21Y,anchor="nw")
-	tk.Button(tkWin, text='匯出目前\n所選CSV', width=7, font=('微軟正黑體', 10), command=ExportImg).place(x=M21X+160,y=M21Y,anchor="nw")
+	tk.Button(tkWin, text='匯出目前\n所選CSV', width=7, font=('微軟正黑體', 10), command=ExportCSV).place(x=M21X+160,y=M21Y,anchor="nw")
 	# tk.Button(tkWin, text='更換圖片\n顯示模式', width=7, font=('微軟正黑體', 10), command=ChangeIMGViewSize).place(x=M21X+240,y=M21Y,anchor="nw")
 	# tk.Button(tkWin, text='試色', width=7, font=('微軟正黑體', 10), command=EDCIP.testingColor).place(x=M21X,y=M21Y+50,anchor="nw")
 
