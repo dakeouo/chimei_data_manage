@@ -523,7 +523,7 @@ def LoadPath_ExpData_CSV_IMG():
 				WriteConsoleMsg("ERROR", "請選擇欲查詢的'時間點'!")
 
 		def LoadPathDataIntoDB():
-			global Default_Info, ExpData_Type
+			global Default_Info, ExpData_Type, EDCIP, EDPC, CURRENT_TimepointList, CURRENT_CONVERT_TP_STR2ID
 
 			ExpNo = ExpData_No_Label['text']
 			ExpModel = Default_Info[1]
@@ -539,8 +539,12 @@ def LoadPath_ExpData_CSV_IMG():
 					newFileContext = EDCIP.RouteInfo("%s/%s.%s" %(nowPath, ExpData_IMGCSV_FileName[i], fTypeCovert[ExpData_Type]))
 				elif ExpData_Type == "IMG":
 					newFileContext = cv2.imread("%s/%s.%s" %(nowPath, ExpData_IMGCSV_FileName[i], fTypeCovert[ExpData_Type]))
+					nowTP = CURRENT_CONVERT_TP_STR2ID[CURRENT_TimepointList[TimepointCombo.current()]]
+					# print(EDCIP.CURRENT_MODEL_NAME, ExpData_Group[i], nowTP)
+					__, ExpData_Group[i], __ = EDPC.ModelGroupCheck(EDCIP.CURRENT_MODEL_NAME, ExpData_Group[i], nowTP)
+					# print(EDCIP.CURRENT_MODEL_NAME, ExpData_Group[i])
 				sql_query = "SELECT \"serial_data_id\" FROM \"exp_detail\" WHERE \"exp_date_id\" = \"%s\" AND \"rat_id\" = \"%s\"" %(ExpNo, ExpData_ID[i])
-					# print(sql_query)
+				# print(sql_query)
 				try:
 					cursor = SQL_CONN.execute(sql_query)
 					result = cursor.fetchall()
@@ -553,7 +557,7 @@ def LoadPath_ExpData_CSV_IMG():
 							EDCIP.CURRENT_MODEL_NAME,
 							ExpDate, ExpData_ID[i], ExpData_Group[i]
 						)
-						print(sql_query)
+						# print(sql_query)
 						cursor = SQL_CONN.execute(sql_query)
 						result = cursor.fetchall()
 						if len(result) > 1:
@@ -568,6 +572,7 @@ def LoadPath_ExpData_CSV_IMG():
 						else:
 							WriteConsoleMsg("NOTICE", "於匯入實驗編號%s 之路徑數據資料時，無法區別重複的大鼠編號%d(%s)" %(ExpNo, ExpData_ID[i], ExpData_Type))
 					else:
+						# print(result[0][0])
 						if ExpData_Type == "CSV":
 							EDCIP.saveNewCSVRoute(result[0][0], newFileContext)
 						elif ExpData_Type == "IMG":
@@ -1319,35 +1324,23 @@ def FilterData2DBData(FD_Date=None, FD_Group=None, FD_Timepoint=None, FD_LME=Non
 	global EXPTABLE_SQL_Query
 	global EDCIP
 
-	isHaveFilter = False
+	# isHaveFilter = False
 	EXPTABLE_SQL_Query = "SELECT * FROM \"VIEW_TOTAL_ExpDetail_Data\" WHERE \"Models\" = \"%s\"" %(EDCIP.CURRENT_MODEL_NAME)
 	ExpDetail_Data_ColList = ['ExpDate', 'groups', 'timepoints', 'long_term', 'short_term', 'latency']
 	if FD_Date != None:
-		if isHaveFilter:
-			EXPTABLE_SQL_Query = EXPTABLE_SQL_Query + " AND"
-		else:
-			isHaveFilter = True
+		EXPTABLE_SQL_Query = EXPTABLE_SQL_Query + " AND"
 		if FD_Date[0] != "%" and FD_Date[1] != "%" and FD_Date[2] != "%":
 			EXPTABLE_SQL_Query = EXPTABLE_SQL_Query + " \"%s\" = \"%s/%s/%s\"" %('ExpDate', FD_Date[0], FD_Date[1], FD_Date[2])
 		else:
 			EXPTABLE_SQL_Query = EXPTABLE_SQL_Query + " \"%s\" LIKE \"%s/%s/%s\""  %('ExpDate', FD_Date[0], FD_Date[1], FD_Date[2])
 	if FD_Group != None:
-		if isHaveFilter:
-			EXPTABLE_SQL_Query = EXPTABLE_SQL_Query + " AND"
-		else:
-			isHaveFilter = True
+		EXPTABLE_SQL_Query = EXPTABLE_SQL_Query + " AND"
 		EXPTABLE_SQL_Query = EXPTABLE_SQL_Query + " \"%s\" = \"%s\""  %('groups', FD_Group)
 	if FD_Timepoint != None:
-		if isHaveFilter:
-			EXPTABLE_SQL_Query = EXPTABLE_SQL_Query + " AND"
-		else:
-			isHaveFilter = True
+		EXPTABLE_SQL_Query = EXPTABLE_SQL_Query + " AND"
 		EXPTABLE_SQL_Query = EXPTABLE_SQL_Query + " \"%s\" = \"%s\""  %('timepoints', FD_Timepoint)
 	if FD_LME != None:
-		if isHaveFilter:
-			EXPTABLE_SQL_Query = EXPTABLE_SQL_Query + " AND"
-		else:
-			isHaveFilter = True
+		EXPTABLE_SQL_Query = EXPTABLE_SQL_Query + " AND"
 		if FD_LME[0] != -1 and FD_LME[1] != -1:
 			EXPTABLE_SQL_Query = EXPTABLE_SQL_Query + " \"%s\" BETWEEN %d AND %d"  %('long_term', FD_LME[0], FD_LME[1])
 		elif FD_LME[0] != -1 and FD_LME[1] == -1:
@@ -1355,10 +1348,7 @@ def FilterData2DBData(FD_Date=None, FD_Group=None, FD_Timepoint=None, FD_LME=Non
 		elif FD_LME[0] == -1 and FD_LME[1] != -1:
 			EXPTABLE_SQL_Query = EXPTABLE_SQL_Query + " \"%s\" < %d"  %('long_term', FD_LME[1])
 	if FD_SME != None:
-		if isHaveFilter:
-			EXPTABLE_SQL_Query = EXPTABLE_SQL_Query + " AND"
-		else:
-			isHaveFilter = True
+		EXPTABLE_SQL_Query = EXPTABLE_SQL_Query + " AND"
 		if FD_SME[0] != -1 and FD_SME[1] != -1:
 			EXPTABLE_SQL_Query = EXPTABLE_SQL_Query + " \"%s\" BETWEEN %d AND %d"  %('short_term', FD_SME[0], FD_SME[1])
 		elif FD_SME[0] != -1 and FD_SME[1] == -1:
@@ -1366,10 +1356,7 @@ def FilterData2DBData(FD_Date=None, FD_Group=None, FD_Timepoint=None, FD_LME=Non
 		elif FD_SME[0] == -1 and FD_SME[1] != -1:
 			EXPTABLE_SQL_Query = EXPTABLE_SQL_Query + " \"%s\" < %d"  %('short_term', FD_SME[1])
 	if FD_Latency != None:
-		if isHaveFilter:
-			EXPTABLE_SQL_Query = EXPTABLE_SQL_Query + " AND"
-		else:
-			isHaveFilter = True
+		EXPTABLE_SQL_Query = EXPTABLE_SQL_Query + " AND"
 		if FD_Latency[0] != -1 and FD_Latency[1] != -1:
 			EXPTABLE_SQL_Query = EXPTABLE_SQL_Query + " \"%s\" BETWEEN %d AND %d"  %('latency', FD_Latency[0], FD_Latency[1])
 		elif FD_Latency[0] != -1 and FD_Latency[1] == -1:

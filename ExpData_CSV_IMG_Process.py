@@ -85,7 +85,9 @@ def saveNewIMGRoute(imgName, Rat_img, saveFolder="IMG"): #將IMG存入新的地�
 	fileFullName = '%s/%s/%s.jpg' %(DestinationFolder, saveFolder, imgName)
 	if not os.path.exists('%s/%s' %(DestinationFolder, saveFolder)):
 		os.mkdir('%s/%s' %(DestinationFolder, saveFolder))
+	print("存入中", fileFullName)
 	cv2.imwrite(fileFullName, Rat_img)
+	print("存入完成")
 
 def listRatDataFile(fileType, source): #取得資料夾內所有的CSV檔(8ArmRat)
 	DataList = []
@@ -133,7 +135,7 @@ def RouteInfo(CSV_FileName): #匯入CSV檔路徑資料並整理成每秒20個點
 	CSV_Info = readCSV2List(CSV_FileName)
 	newCSV_Info = []
 	for i in range(1,len(CSV_Info)):
-		row = []
+		# row = []
 		for j in range(0,len(CSV_Info[i])):
 			if CSV_Info[i][j] != "":
 				try:
@@ -141,30 +143,32 @@ def RouteInfo(CSV_FileName): #匯入CSV檔路徑資料並整理成每秒20個點
 					row2 = row1[1].split(']')
 					row3 = row2[0].split(',')
 					newP = [int(row3[0]), int(row3[1])]
+					if newP[0] == -20 and newP[1] == -20:
+						if len(newCSV_Info) > 0:
+							idx = len(newCSV_Info)-1
+							newP = [newCSV_Info[idx][0], newCSV_Info[idx][1]]
+							newCSV_Info.append(newP)
+					else:
+						newCSV_Info.append(newP)
 				except:
 					print(CSV_FileName)
 					print("[%d,%d]" %(i,j))
-				if newP[0] == -20 and newP[1] == -20 and i > 0:
-					if j == 0:
-						try:
-							idx = len(newCSV_Info)-1
-							newP = [newCSV_Info[idx][len(newCSV_Info[idx])-1][0], newCSV_Info[idx][len(newCSV_Info[idx])-1][1]]
-						except:
-							print(CSV_FileName)
-							print("[%d,%d]" %(i,j))
-							print(len(newCSV_Info)-1)
-					else:
-						newP = [row[len(row)-1][0], row[len(row)-1][1]]
-				row.append(newP)
-		newRow = []
-		if len(row) != 20:
-			for j in range(0,20):
-				idx = int((len(row)/20)*j)
-				newRow.append([row[idx][0], row[idx][1]])
-			newCSV_Info.append(newRow)
+
+	lineCount = 0
+	row = []
+	newCSV_result = []
+	for rowCoodi in newCSV_Info:
+		if lineCount < 20:
+			row.append(rowCoodi)
+			lineCount += 1
 		else:
-			newCSV_Info.append(row)
-	return newCSV_Info
+			newCSV_result.append(row)
+			lineCount = 0
+			row = []
+	if len(row) > 0:
+		newCSV_result.append(row)
+
+	return newCSV_result
 
 def Line2PointTotalDistance(line_point1, line_point2, target_point):
 	return TwoPointDistance(target_point, line_point1) + TwoPointDistance(target_point, line_point2)
