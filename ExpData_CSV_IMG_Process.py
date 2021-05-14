@@ -121,7 +121,8 @@ def transfer2CoodinateList(CSV_FileName, expLatency): #將CSV內的資料轉換�
 		# print(tranStart, len(CSV_Info)*20)
 	else:
 		tranStart = 0
-	PointTot = len(CSV_Info)*20
+	PointTot = (len(CSV_Info)-1)*20
+	PointTot += len(CSV_Info[len(CSV_Info)-1])
 	# print(PointTot)
 	for i in range(tranStart, PointTot):
 		row1 = CSV_Info[int(i/20)][int(i%20)].split('[')
@@ -656,7 +657,7 @@ def Route2_1Min_Img(ExpDate, ExpRatDataNo, ExpLatency, ratGroups):
 
 	# 繪製圖片
 	RouteCount = len(RoutePath)
-	colorLevel1 = 120*20
+	colorLevel1 = 60*20
 
 	# 繪製前一分鐘圖片
 	newImg = makeBlackImage()
@@ -668,7 +669,7 @@ def Route2_1Min_Img(ExpDate, ExpRatDataNo, ExpLatency, ratGroups):
 	for i in range(0, Level1End):
 		cv2.circle(newImg, convert(RoutePath[i]), 1, (0,255,0), -1)
 	# saveNewIMGRoute(ExpRatDataNo, newImg, "IMG_Front(2min)")
-	saveNewIMGRoute(ExpRatDataNo + "_%s" %(ratGroups), newImg, "IMG_Front(2min)")
+	saveNewIMGRoute(ExpRatDataNo + "_%s" %(ratGroups), newImg, "IMG_Front(1min)")
 
 	# 繪製最後一分鐘圖片
 	newImg1 = makeBlackImage()
@@ -680,7 +681,7 @@ def Route2_1Min_Img(ExpDate, ExpRatDataNo, ExpLatency, ratGroups):
 	for i in range(Level2Start, RouteCount):
 		cv2.circle(newImg1, convert(RoutePath[i]), 1, (0,255,0), -1)
 	# saveNewIMGRoute(ExpRatDataNo, newImg1, "IMG_Back(2min)")
-	saveNewIMGRoute(ExpRatDataNo + "_%s" %(ratGroups), newImg1, "IMG_Back(2min)")
+	saveNewIMGRoute(ExpRatDataNo + "_%s" %(ratGroups), newImg1, "IMG_Back(1min)")
 
 
 def testingColor():
